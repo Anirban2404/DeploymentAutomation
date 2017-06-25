@@ -1,0 +1,46 @@
+{
+  "components": {
+    "plugins": {
+      "DeploymentCodeGenerator": {
+        "src": "src/plugins/DeploymentCodeGenerator",
+        "test": "test/plugins/DeploymentCodeGenerator"
+      },
+      "ansibleVMspawn": {
+        "src": "src/plugins/ansibleVMspawn",
+        "test": "test/plugins/ansibleVMspawn"
+      },
+      "websserverAnsible": {
+        "src": "src/plugins/websserverAnsible",
+        "test": "test/plugins/websserverAnsible"
+      }
+    },
+    "visualizers": {},
+    "decorators": {
+      "openStackDecorator": {
+        "src": "src/decorators/openStackDecorator"
+      }
+    }
+  },
+  "dependencies": {
+    "plugins": {},
+    "visualizers": {
+      "ICore": {
+        "src": "panels/ICore/ICorePanel",
+        "title": "ICore",
+        "panel": "src/visualizers/panels/ICore",
+        "secondary": false,
+        "widget": "src/visualizers/widgets/ICore",
+        "project": "webgme-icore"
+      },
+      "FloatingActionButton": {
+        "src": "panels/FloatingActionButton/FloatingActionButtonPanel",
+        "title": "FloatingActionButton",
+        "panel": "src/visualizers/panels/FloatingActionButton",
+        "secondary": true,
+        "widget": "src/visualizers/widgets/FloatingActionButton",
+        "project": "webgme-fab"
+      }
+    },
+    "decorators": {}
+  }
+}

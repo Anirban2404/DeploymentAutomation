@@ -1,0 +1,42 @@
+{
+  "name": "deploymentautomation",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Anirban2404/DeploymentAutomation.git"
+  },
+  "scripts": {
+    "start": "node app.js",
+    "test": "node ./node_modules/mocha/bin/mocha --recursive test",
+    "apply": "node ./node_modules/webgme/src/bin/apply.js",
+    "diff": "node ./node_modules/webgme/src/bin/diff.js",
+    "export": "node ./node_modules/webgme/src/bin/export.js",
+    "import": "node ./node_modules/webgme/src/bin/import.js",
+    "merge": "node ./node_modules/webgme/src/bin/merge.js",
+    "plugin": "node ./node_modules/webgme/src/bin/run_plugin.js",
+    "pluginHook": "node ./node_modules/webgme/src/bin/plugin_hook.js",
+    "users": "node ./node_modules/webgme/src/bin/usermanager.js",
+    "clean_up": "node ./node_modules/webgme/src/bin/clean_up.js"
+  },
+  "version": "1.0.0",
+  "peerDependencies": {
+    "webgme": "^2.0.0"
+  },
+  "devDependencies": {
+    "mocha": "^2.2.5",
+    "rimraf": "^2.4.0",
+    "chai": "^3.0.0"
+  },
+  "dependencies": {
+    "fs-extra": "^3.0.1",
+    "ip": "^1.1.5",
+    "loadash": "0.0.1",
+    "mkdirp": "^0.5.1",
+    "node-ansible": "^0.5.5",
+    "pkgcloud": "^1.4.0",
+    "pug": "^2.0.0-rc.2",
+    "shelljs": "^0.7.8",
+    "webgme": "^2.14.0",
+    "webgme-fab": "^2.1.0",
+    "webgme-icore": "^0.2.0"
+  }
+}
