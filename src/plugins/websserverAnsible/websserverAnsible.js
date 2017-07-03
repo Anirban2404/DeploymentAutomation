@@ -11,10 +11,9 @@ define([
     'plugin/PluginConfig',
     'text!./metadata.json',
     'plugin/PluginBase'
-], function (
-    PluginConfig,
-    pluginMetadata,
-    PluginBase) {
+], function (PluginConfig,
+             pluginMetadata,
+             PluginBase) {
     'use strict';
 
     pluginMetadata = JSON.parse(pluginMetadata);
@@ -43,7 +42,7 @@ define([
     // Prototypical inheritance from PluginBase.
     websserverAnsible.prototype = Object.create(PluginBase.prototype);
     websserverAnsible.prototype.constructor = websserverAnsible;
-
+    var deasync = require("deasync");
     /**
      * Main function for the plugin to execute. this will perform the execution.
      * Notes:
@@ -107,12 +106,8 @@ define([
                     self.pathToNode[self.core.getPath(nodes[i])] = nodes[i];
                     //self.logger.info(self.core.getAttribute(nodes[i], 'name'));
 
-                    if (self.isMetaTypeOf(nodes[i], self.META['WebApplication']) === true)
-                    {
+                    if (self.isMetaTypeOf(nodes[i], self.META['WebApplication']) === true) {
                         dataModel.ApplicationModel.AppType = 'WebApplication';
-                        var host_ip = self.core.getAttribute(nodes[i], 'host_ip');
-                        dataModel.ApplicationModel.host_ip = host_ip;
-                        self.logger.info(host_ip);
                         var language = self.core.getAttribute(nodes[i], 'language');
                         dataModel.ApplicationModel.language = language;
                         self.logger.info(language);
@@ -122,9 +117,50 @@ define([
                         var srcPath = self.core.getAttribute(nodes[i], 'src');
                         dataModel.ApplicationModel.srcPath = srcPath;
                         self.logger.info(srcPath);
-                        generateAnsible(JSON.stringify(dataModel, null, 4));
+                        //generateAnsible(JSON.stringify(dataModel, null, 4));
+                    }
+                    if (self.isMetaTypeOf(nodes[i], self.META['Hardware']) === true) {
+                        var host_ip = self.core.getAttribute(nodes[i], 'host_ip');
+                        dataModel.ApplicationModel.host_ip = host_ip;
+                        self.logger.info(host_ip);
+                        //generateAnsible(JSON.stringify(dataModel, null, 4));
                     }
                 }
+
+                childrenPaths = self.core.getChildrenPaths(self.activeNode);
+
+                for (i = 0; i < childrenPaths.length; i += 1) {
+                    childNode = self.pathToNode[childrenPaths[i]];
+                    // Log the name of the child (it's an attribute so we use getAttribute).
+                    childName = self.core.getAttribute(childNode, 'name');
+                    // self.logger.info('At childNode', childName);
+                    if (self.isMetaTypeOf(childNode, self.META['WebApplication']) === true) {
+                        // The children paths are available from the node.
+                        var acq_path = self.core.getChildrenPaths(childNode);
+                        for (j = 0; j < acq_path.length; j += 1) {
+                            acq_node = self.pathToNode[acq_path[j]];
+                            var webEngine = self.core.getAttribute(acq_node, 'name');
+                            dataModel.ApplicationModel.WebEngine = webEngine;
+                            self.logger.info(webEngine);
+
+                        }
+                    }
+                    if (self.isMetaTypeOf(childNode, self.META['Hardware']) === true) {
+                        // The children paths are available from the node.
+                        var acq_path = self.core.getChildrenPaths(childNode);
+                        for (j = 0; j < acq_path.length; j += 1) {
+                            acq_node = self.pathToNode[acq_path[j]];
+                            var os_name = self.core.getAttribute(acq_node, 'name');
+                            dataModel.ApplicationModel.OS.name = os_name;
+                            self.logger.info(os_name);
+                            var os_version = self.core.getAttribute(acq_node, 'version');
+                            dataModel.ApplicationModel.OS.version = os_version;
+                            self.logger.info(os_version);
+
+                        }
+                    }
+                }
+                generateAnsible(JSON.stringify(dataModel, null, 4));
             });
     };
 
@@ -140,14 +176,15 @@ define([
         var language = readJSON['ApplicationModel']['language'];
         var webEngine = readJSON['ApplicationModel']['WebEngine'];
         var ostype = readJSON['ApplicationModel']['OS']['name'];
-        var osversion = readJSON['ApplicationModel']['OS']['name'];
+        var osversion = readJSON['ApplicationModel']['OS']['version'];
 
         console.log(AppType);
         console.log(name);
-        console.log(hostip);
         console.log(srcPath);
         console.log(language);
         console.log(webEngine);
+
+        console.log(hostip);
         console.log(ostype);
         console.log(osversion);
 
@@ -155,12 +192,12 @@ define([
         var fs = require('fs');
         var fs = require('fs-extra')
         var path = require("path");
-        var dir =  path.resolve(".");
+        var scriptdir = path.resolve(".");
         var mkdirp = require('mkdirp')
-        dir += "/examples/ansibleScript/";
-        dir += AppType;
-        console.log(dir);
-        fs.ensureDirSync(dir , function (err) {
+        scriptdir += "/examples/ansibleScript/";
+        scriptdir += AppType;
+        //console.log(scriptdir);
+        fs.ensureDirSync(scriptdir, function (err) {
             if (err) {
                 console.log(err);
             } else {
@@ -168,22 +205,157 @@ define([
             }
         });
 
-        var hostfile = dir + '/' + 'hosts';
-        fs.exists( hostfile, function (exists) {
-            if (exists) {
-                //Show in green
-                console.log('File exists. Deleting now ...');
-                fs.unlink(hostfile);
+        var hostfile = scriptdir + '/' + 'hosts';
+        console.log(hostfile);
+
+        var hostContent = "[webserver]\n";
+        hostContent += hostip;
+        hostContent += " ansible_connection=ssh ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3";
+        //console.log ( hostContent);
+        fs.writeFile(hostfile, hostContent, function (err) {
+            if (err) {
+                return console.log(err);
+            }
+
+            console.log("The host file was saved!");
+        });
+
+
+        //Genarating to the main playbook
+
+        var deploydir = path.resolve(".");
+        var deployFile = scriptdir + '/' + 'site.yml';
+        console.log(deployFile);
+
+        //console.log('deploydir: ' + deploydir);
+
+        var websiteTempfile = deploydir + "/templates/websiteTemp";
+        console.log(websiteTempfile);
+        //Read the header file
+        var websiteTemp = fs.readFileSync(websiteTempfile, 'utf8');
+
+        fs.writeFileSync(deployFile, websiteTemp);
+        var vars = "\n\n  vars:\n";
+        vars += "    - path: " + srcPath;
+        console.log(vars);
+        fs.appendFileSync(deployFile, vars);
+
+
+
+        // Creating roles directory
+        var roleDir = scriptdir + "/roles";
+
+        fs.ensureDirSync(roleDir, function (err) {
+            if (err) {
+                console.log(err);
             } else {
-                //Show in red
-                console.log('File not found, so not deleting.');
+                console.log('Role Directory ' + directory + ' created.');
             }
         });
-        console.log ( hostfile);
-        var hostContent = hostip;
-        fs.writeFileSync(hostfile, hostContent);
 
+        //  Creating Application directory in roles directory
+        var roleAppDir = roleDir + "/" + name;
+        fs.ensureDirSync(roleAppDir, function (err) {
+            if (err) {
+                console.log(err);
+            } else {
+                console.log('Role Directory ' + directory + ' created.');
+            }
+        });
+
+        // Creating Tasks directory in Application directory
+        var roleAppDir = roleDir + "/" + name;
+        fs.ensureDirSync(roleAppDir, function (err) {
+            if (err) {
+                console.log(err);
+            } else {
+                console.log('Role Directory ' + directory + ' created.');
+            }
+        });
+        // Creating Main Task file
+        var roleTaskDir = roleAppDir + "/" + "tasks";
+        fs.ensureDirSync(roleTaskDir, function (err) {
+            if (err) {
+                console.log(err);
+            } else {
+                console.log('Role Directory ' + directory + ' created.');
+            }
+        });
+        // Creating Main Task file
+        var mainTaskFile = roleTaskDir + "/" + "main.yml";
+        //language
+        fs.writeFileSync(mainTaskFile, "---\n");
+
+        // MySQL driver
+        var mysql = require('mysql');
+
+        var conn = mysql.createConnection({
+            // host: "127.0.0.1",
+            user: "root",
+            password: "isislab"
+        });
+
+
+        conn.connect(function (err) {
+            if (err) throw err;
+            console.log("Connected!");
+        });
+
+        if ( language.toLowerCase() == "nodejs") {
+            var sql = "SELECT b.pkg_name FROM softwaredependency.packages b ,softwaredependency.swdependency a where b.app_id=a.id and a.AppType='" + language.toLowerCase() + "'";
+            sql += "and b.sw_id in (select app_sw_id FROM softwaredependency.os_dependency where os_id in (SELECT id FROM softwaredependency.os_pkg_mgr ";
+            sql += "where concat(OS_type,OS_version) = '" + ostype + osversion + "'))";
+
+            var install_language = "- include: install_" + language.toLowerCase() + ".yml";
+            fs.appendFileSync(mainTaskFile, install_language);
+
+            console.log(install_language);
+
+            var ubuntu_pkg_vars = "\n\n      ubuntu_" + language.toLowerCase()+"_pkgs:\n";
+            ubuntu_pkg_vars += "        <<packages>>"
+            fs.appendFileSync(deployFile, ubuntu_pkg_vars);
+
+            var pkg_result ="";
+            var replace = require("replace");
+            conn.query(sql, function (err, rows) {
+                if (err) throw err;
+                for (var i in rows) {
+                    var rowResult = "         - " + rows[i].pkg_name;
+                    pkg_result += rowResult +"\n";
+                }
+                replace({
+                    regex: "        <<packages>>",
+                    replacement: pkg_result,
+                    paths: [deployFile],
+                    recursive: true,
+                    silent: true,
+                });
+            });
+
+            conn.end();
+
+            var nodeTempfile = deploydir + "/templates/nodeTemplate";
+            console.log(nodeTempfile);
+            //Read the header file
+            var nodeTemp = fs.readFileSync(nodeTempfile, 'utf8');
+
+            // Creating Task file
+            var nodeTaskFile = roleTaskDir + "/" +  "install_" + language.toLowerCase() + ".yml";
+            console.log(nodeTaskFile);
+            fs.writeFile(nodeTaskFile, nodeTemp, function (err) {
+                if (err) {
+                    return console.log(err);
+                }
+
+                console.log("The node file was generated!");
+            });
+        }
+
+        var roles = "\n\n  roles:\n";
+        roles += "    - " + name;
+        fs.appendFileSync(deployFile, roles);
     };
+    // openstack server list --name test16| awk '{print $8}'
 
     return websserverAnsible;
 });
