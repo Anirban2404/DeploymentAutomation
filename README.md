@@ -19,8 +19,8 @@ Latest Releases Via Apt (Ubuntu)
 Ubuntu builds are available in a PPA here.
 
 To configure the PPA on your machine and install ansible run these commands:
- -`$ sudo apt-get install software-properties-common`
- -`$ sudo apt-add-repository ppa:ansible/ansible`
+ -`$ sudo apt-get install software-properties-common`\n
+  -`$ sudo apt-add-repository ppa:ansible/ansible`
  -`$ sudo apt-get update`
  -`$ sudo apt-get install ansible`
 
