@@ -32,13 +32,14 @@
     "ip": "^1.1.5",
     "loadash": "0.0.1",
     "mkdirp": "^0.5.1",
-    "mysql": "^2.13.0",
+    "mysql": "^2.14.1",
     "node-ansible": "^0.5.5",
     "pkgcloud": "^1.4.0",
-    "pug": "^2.0.0-rc.2",
+    "pug": "^2.0.0-rc.3",
     "replace": "^0.3.0",
     "shelljs": "^0.7.8",
-    "webgme": "^2.14.0",
+    "webgme": "^2.16.0",
+    "webgme-codeeditor": "^3.1.2",
     "webgme-fab": "^2.1.0",
     "webgme-icore": "^0.2.0"
   }

@@ -8,7 +8,7 @@ var config = require('./config.webgme'),
 // config.mongo.uri = 'mongodb://127.0.0.1:27017/webgme_my_app';
 
 // Add/overwrite any additional settings here
-config.server.port = 8080;
+config.server.port = 8888;
 // config.mongo.uri = 'mongodb://127.0.0.1:27017/webgme_my_app';
 config.authentication.allowUserRegistration = true
 //config.authentication.enable = true

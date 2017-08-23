@@ -14,6 +14,8 @@ config.visualization.decoratorPaths.push(__dirname + '/../src/decorators');
 
 config.visualization.panelPaths.push(__dirname + '/../node_modules/webgme-icore/src/visualizers/panels');
 config.visualization.panelPaths.push(__dirname + '/../node_modules/webgme-fab/src/visualizers/panels');
+config.visualization.panelPaths.push(__dirname + '/../node_modules/webgme-codeeditor/src/visualizers/panels');
+config.visualization.panelPaths.push(__dirname + '/../src/visualizers/panels');
 
 
 
@@ -22,10 +24,13 @@ config.visualization.panelPaths.push(__dirname + '/../node_modules/webgme-fab/sr
 config.visualization.visualizerDescriptors.push(__dirname + '/../src/visualizers/Visualizers.json');
 // Add requirejs paths
 config.requirejsPaths = {
+  'CodeEditor': 'panels/CodeEditor/CodeEditorPanel',
   'FloatingActionButton': 'panels/FloatingActionButton/FloatingActionButtonPanel',
   'ICore': 'panels/ICore/ICorePanel',
   'panels': './src/visualizers/panels',
   'widgets': './src/visualizers/widgets',
+  'panels/CodeEditor': './node_modules/webgme-codeeditor/src/visualizers/panels/CodeEditor',
+  'widgets/CodeEditor': './node_modules/webgme-codeeditor/src/visualizers/widgets/CodeEditor',
   'panels/FloatingActionButton': './node_modules/webgme-fab/src/visualizers/panels/FloatingActionButton',
   'widgets/FloatingActionButton': './node_modules/webgme-fab/src/visualizers/widgets/FloatingActionButton',
   'panels/ICore': './node_modules/webgme-icore/src/visualizers/panels/ICore',

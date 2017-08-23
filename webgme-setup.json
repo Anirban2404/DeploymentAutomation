@@ -14,7 +14,15 @@
         "test": "test/plugins/websserverAnsible"
       }
     },
-    "visualizers": {},
+    "visualizers": {
+      "codeVizualizer": {
+        "src": "panels/codeVizualizer/codeVizualizerPanel",
+        "title": "codeVizualizer",
+        "panel": "src/visualizers/panels/codeVizualizer",
+        "secondary": false,
+        "widget": "src/visualizers/widgets/codeVizualizer"
+      }
+    },
     "decorators": {
       "openStackDecorator": {
         "src": "src/decorators/openStackDecorator"
@@ -39,6 +47,14 @@
         "secondary": true,
         "widget": "src/visualizers/widgets/FloatingActionButton",
         "project": "webgme-fab"
+      },
+      "CodeEditor": {
+        "src": "panels/CodeEditor/CodeEditorPanel",
+        "title": "CodeEditor",
+        "panel": "src/visualizers/panels/CodeEditor",
+        "secondary": false,
+        "widget": "src/visualizers/widgets/CodeEditor",
+        "project": "webgme-codeeditor"
       }
     },
     "decorators": {}

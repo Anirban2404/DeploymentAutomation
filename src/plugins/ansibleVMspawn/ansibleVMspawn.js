@@ -111,7 +111,7 @@ define([
 
         console.log("Spawning VM..");
         console.log(_variables);
-        var shell = require('shelljs');
+        var shell = require('child_process');
 
         var command = "ansible-playbook ";
         command += "/root/ansible_test/openstackVMspawn.yml ";
@@ -119,13 +119,12 @@ define([
         command += '" ' + _variables + ' "';
         console.log(command);
 
-        var promise =  shell.exec(command);
-        promise.then(err => {
-         if (err)
-            console.error(err);
-        });
-
+        // var promise =
+        shell.exec(command);
+        // promise.then(err => {
+        //  if (err)
+        //     console.error(err);
+        // });
     };
-
     return ansibleVMspawn;
 });

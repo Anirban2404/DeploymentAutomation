@@ -11,14 +11,10 @@
     raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
 
   vars:
-    - path: https://github.com/Anirban2404/simpleChatServer.git
+    - path: 
 
       ubuntu_nodejs_pkgs:
-         - nodejs-legacy
-         - mcrypt
-         - nodejs
-         - npm
 
 
   roles:
-    - webserver
+    - WebApplication
