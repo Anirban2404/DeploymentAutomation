@@ -1,0 +1,23 @@
+{
+  "GenericUIProjectRepositoryWidget": {
+    "commitBadges": {
+      "ConstraintCheckerCommitBadge": {
+        "path": "widgets/ConstraintCheckerCommitBadge/ConstraintCheckerCommitBadgeWidget"
+      }
+    }
+  },
+  "ConstraintCheckerHook": {
+    "id": "ConstraintCheckerHook",
+    "origin": "http://127.0.0.1",
+    "port": 8080,
+    "description": "Checks if there are any meta violations in the project",
+    "events": [
+      "COMMIT"
+    ],
+    "maximumConcurrentJobs": 1,
+    "addAtProjectCreation": true,
+    "activeAtProjectCreation": true,
+    "mongoUri": "mongodb://127.0.0.1:27017/webgme_constraint_results",
+    "mongoOptions": {}
+  }
+}

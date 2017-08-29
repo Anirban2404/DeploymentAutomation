@@ -1,2 +1,2 @@
 [webserver]
-127.0.0.1 ansible_connection=ssh ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+129.59.234.238 ansible_connection=ssh ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3

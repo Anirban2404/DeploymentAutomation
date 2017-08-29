@@ -12,6 +12,10 @@
       "websserverAnsible": {
         "src": "src/plugins/websserverAnsible",
         "test": "test/plugins/websserverAnsible"
+      },
+      "LAMPansible": {
+        "src": "src/plugins/LAMPansible",
+        "test": "test/plugins/LAMPansible"
       }
     },
     "visualizers": {
@@ -27,10 +31,16 @@
       "openStackDecorator": {
         "src": "src/decorators/openStackDecorator"
       }
-    }
+    },
+    "routers": {}
   },
   "dependencies": {
-    "plugins": {},
+    "plugins": {
+      "ConstraintChecker": {
+        "project": "webgme-constraint-checker",
+        "path": "node_modules/webgme-constraint-checker/src/plugins/ConstraintChecker"
+      }
+    },
     "visualizers": {
       "ICore": {
         "src": "panels/ICore/ICorePanel",
@@ -55,8 +65,23 @@
         "secondary": false,
         "widget": "src/visualizers/widgets/CodeEditor",
         "project": "webgme-codeeditor"
+      },
+      "ConstraintCheckerCommitBadge": {
+        "src": "panels/ConstraintCheckerCommitBadge/ConstraintCheckerCommitBadgePanel",
+        "title": "ConstraintCheckerCommitBadge",
+        "panel": "src/visualizers/panels/ConstraintCheckerCommitBadge",
+        "secondary": true,
+        "widget": "src/visualizers/widgets/ConstraintCheckerCommitBadge",
+        "project": "webgme-constraint-checker"
       }
     },
-    "decorators": {}
+    "decorators": {},
+    "routers": {
+      "ConstraintResults": {
+        "project": "webgme-constraint-checker",
+        "path": "node_modules/webgme-constraint-checker/src/routers/ConstraintResults",
+        "mount": "routers/ConstraintResults"
+      }
+    }
   }
 }

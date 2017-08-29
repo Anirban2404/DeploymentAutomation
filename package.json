@@ -15,7 +15,8 @@
     "plugin": "node ./node_modules/webgme/src/bin/run_plugin.js",
     "pluginHook": "node ./node_modules/webgme/src/bin/plugin_hook.js",
     "users": "node ./node_modules/webgme/src/bin/usermanager.js",
-    "clean_up": "node ./node_modules/webgme/src/bin/clean_up.js"
+    "clean_up": "node ./node_modules/webgme/src/bin/clean_up.js",
+    "webgme-constraint-checker": "webgme-constraint-checker"
   },
   "version": "1.0.0",
   "peerDependencies": {
@@ -28,6 +29,7 @@
   },
   "dependencies": {
     "deasync": "^0.1.10",
+    "file-size-watcher": "^0.2.1",
     "fs-extra": "^3.0.1",
     "ip": "^1.1.5",
     "loadash": "0.0.1",
@@ -38,8 +40,10 @@
     "pug": "^2.0.0-rc.3",
     "replace": "^0.3.0",
     "shelljs": "^0.7.8",
+    "sleep": "^5.1.1",
     "webgme": "^2.16.0",
     "webgme-codeeditor": "^3.1.2",
+    "webgme-constraint-checker": "^1.1.1",
     "webgme-fab": "^2.1.0",
     "webgme-icore": "^0.2.0"
   }

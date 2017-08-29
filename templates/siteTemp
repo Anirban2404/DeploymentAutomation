@@ -1,0 +1,11 @@
+---
+- name: Deploying Application
+  hosts: all
+  # remote_user: root
+  become_user: root
+  become: true
+  become_method: sudo
+
+  pre_tasks:
+  - name: install python 2
+    raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)

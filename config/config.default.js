@@ -16,8 +16,10 @@ config.authentication.allowGuests = true
 
 // Plugins
 config.plugin.allowServerExecution = true;
-
-
+// Custom constraints
+config.core.enableCustomConstraints = true;
+// WebHooks
+config.webhooks.enable = true;
 // UI
 //config.visualization.layout.default = 'SidebarLayout';
 config.executor.enable = true;

@@ -1,0 +1,7 @@
+- hosts: webserver
+  become_user: root
+  become: true
+  become_method: sudo
+
+
+    
