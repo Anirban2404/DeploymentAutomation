@@ -180,7 +180,7 @@ define([
                                 self.logger.info(os_version);
                             }
 
-                            openstackVMspawn.spawnVM(JSON.stringify(dataModel, null, 4));
+                           // openstackVMspawn.spawnVM(JSON.stringify(dataModel, null, 4));
                         }
                     }
                 }

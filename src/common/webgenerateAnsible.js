@@ -1,7 +1,7 @@
-define([], function() {
+define([], function () {
     'use strict';
     return {
-        webgenerateAnsible: function(webModel) {
+        webgenerateAnsible: function (webModel) {
             console.log("Generate Web Ansible Scripts..");
             console.log(webModel);
             // webModel.

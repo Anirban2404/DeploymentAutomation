@@ -1,7 +1,7 @@
-define([], function() {
+define([], function () {
     'use strict';
     return {
-        dbgenerateAnsible: function(dbModel) {
+        dbgenerateAnsible: function (dbModel) {
 
             console.log("Generate DB Ansible Scripts..");
             console.log(dbModel);
@@ -101,7 +101,6 @@ define([], function() {
             fs.appendFileSync(deployFile, invars);
 
             console.log("scriptdir", scriptdir);
-
 
 
             var dbdeployFile = scriptdir + '/' + 'dbapp.yml';
@@ -260,7 +259,6 @@ define([], function() {
 
                     console.log("The node file was generated!");
                 });
-
 
 
                 // Creating Template files
