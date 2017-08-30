@@ -10,11 +10,12 @@
 define([
     'plugin/PluginConfig',
     'text!./metadata.json',
-    'plugin/PluginBase'
-], function (
-    PluginConfig,
-    pluginMetadata,
-    PluginBase) {
+    'plugin/PluginBase',
+    'cloudcamp/openstackVMspawn'
+], function (PluginConfig,
+             pluginMetadata,
+             PluginBase,
+             openstackVMspawn) {
     'use strict';
 
     pluginMetadata = JSON.parse(pluginMetadata);
@@ -32,7 +33,6 @@ define([
         this.pluginMetadata = pluginMetadata;
         this.pathToNode = {};
     };
-
     /**
      * Metadata associated with the plugin. Contains id, name, version, description, icon, configStructue etc.
      * This is also available at the instance at this.pluginMetadata.
@@ -62,7 +62,16 @@ define([
         // Using the coreAPI to make changes.
 
         nodeObject = self.activeNode;
-        self.extractDataModel();
+        self.extractDataModel()
+            .then(function (dataModel) {
+                var dataModelStr = JSON.stringify(dataModel, null, 4);
+                self.dataModel = dataModel;
+                //self.logger.info('Extracted dataModel', dataModelStr);
+            })
+            .catch(function (err) {
+                // Success is false at invocation.
+                callback(err, self.result);
+            });
     };
 
     /**
@@ -77,54 +86,108 @@ define([
 
         //self.logger.info (self.core.getAttribute(self.activeNode, 'name'));
 
+        // var dataModel =
+        //     {
+        //         ansibleModel: {
+        //             AppType: "",
+        //             VMName: "",
+        //             cpu_num: "",
+        //             disk_size: "",
+        //             flavor_name: "",
+        //             hostname: "",
+        //             image: "",
+        //             mem_size: "",
+        //             network: ""
+        //         }
+        //     };
+        var dataModel =
+            {
+                ansibleModel: {
+                    VMName: "",
+                    flavor_name: "",
+                    hostname: "",
+                    image: "",
+                    network: "",
+                    OS: {
+                        name: "",
+                        version: ""
+                    }
+                }
+            };
+
+
         // In order to avoid multiple iterative asynchronous 'load' calls we pre-load all the nodes in the state-machine
         // and builds up a local hash-map from their paths to the node.
         return this.core.loadSubTree(self.activeNode)
             .then(function (nodes) {
+
+
                 // All the nodes or objects
                 for (var i = 0; i < nodes.length; i += 1) {
                     self.pathToNode[self.core.getPath(nodes[i])] = nodes[i];
-                    self.logger.info(self.core.getAttribute(nodes[i], 'name'));
+                    //self.logger.info(self.core.getAttribute(nodes[i], 'name'));
+                }
+
+                var childrenPaths = self.core.getChildrenPaths(self.activeNode);
+                // console.log(childrenPaths.length);
+                for (i = 0; i < childrenPaths.length; i += 1) {
+
+                    var childNode = self.pathToNode[childrenPaths[i]];
+                    if (self.isMetaTypeOf(childNode, self.META['HostedOn']) === true) {
+                        var childName = self.core.getAttribute(childNode, 'name');
+                        self.logger.info('At childNode', childName);
+                        var src_Path = self.core.getPointerPath(childNode, 'src');
+                        var dst_Path = self.core.getPointerPath(childNode, 'dst');
+
+                        if (src_Path && dst_Path) {
+                            var srcNode = self.pathToNode[src_Path];
+                            var dstNode = self.pathToNode[dst_Path];
+                            self.logger.info(self.core.getAttribute(childNode, 'name'));
+                            self.logger.info('connects');
+                            self.logger.info(self.core.getAttribute(srcNode, 'name'));
+                            self.logger.info('-->');
+                            self.logger.info(self.core.getAttribute(dstNode, 'name'));
+                        }
 
 
-                    if (self.isMetaTypeOf(nodes[i], self.META['OpenStack']) === true) {
-                        var flavor_name = self.core.getAttribute(nodes[i], 'flavor_name');
-                        self.logger.info(flavor_name);
-                        var image = self.core.getAttribute(nodes[i], 'image');
-                        self.logger.info(image);
-                        var hostname = self.core.getAttribute(nodes[i], 'hostname');
-                        self.logger.info(hostname);
-                        var vmName = self.core.getAttribute(nodes[i], 'name');
-                        self.logger.info(vmName);
-                        var network = self.core.getAttribute(nodes[i], 'network');
-                        self.logger.info(network);
-                        var _variables = "VM_Name=" + vmName + " Image_Name=" + image + " Flavor_Name=" +   flavor_name + " Host_Name=" + "nova:" +  hostname + " Network_Name="  + network ;
-                        self.logger.info(_variables);
+                        var src_node = self.core.getAttribute(srcNode, 'name');
+                        // self.logger.info('At srcNode', src_node);
+                        var dst_node = self.core.getAttribute(dstNode, 'name');
+                        // self.logger.info('At dstNode', dst_node);
+                        if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true && self.isMetaTypeOf(dstNode, self.META['OpenStack']) === true) {
+                            var flavor_name = self.core.getAttribute(dstNode, 'flavor_name');
+                            dataModel.ansibleModel.flavor_name = flavor_name;
+                            self.logger.info(flavor_name);
+                            var hostname = self.core.getAttribute(dstNode, 'hostname');
+                            dataModel.ansibleModel.hostname = hostname;
+                            self.logger.info(hostname);
 
-                        spawnVM(_variables,vmName);
+                            var vmName = self.core.getAttribute(dstNode, 'name');
+                            dataModel.ansibleModel.VMName = vmName;
+                            self.logger.info(vmName);
+                            var network = self.core.getAttribute(dstNode, 'network');
+                            dataModel.ansibleModel.network = network;
+                            self.logger.info(network);
+
+                            var acq_path = self.core.getChildrenPaths(dstNode);
+                            for (var j = 0; j < acq_path.length; j += 1) {
+                                var acq_node = self.pathToNode[acq_path[j]];
+                                var os_name = self.core.getAttribute(acq_node, 'name');
+                                dataModel.ansibleModel.OS.name = os_name;
+                                self.logger.info(os_name);
+                                var os_version = self.core.getAttribute(acq_node, 'version');
+                                dataModel.ansibleModel.OS.version = os_version;
+                                self.logger.info(os_version);
+                            }
+
+                            openstackVMspawn.spawnVM(JSON.stringify(dataModel, null, 4));
+                        }
                     }
                 }
-            });
+                return dataModel;
+            })
+            .nodeify(callback);
     };
 
-    var spawnVM = function (_variables,vmName) {
-
-        console.log("Spawning VM..");
-        console.log(_variables);
-        var shell = require('child_process');
-
-        var command = "ansible-playbook ";
-        command += "/root/ansible_test/openstackVMspawn.yml ";
-        command += "--extra-vars ";
-        command += '" ' + _variables + ' "';
-        console.log(command);
-
-        // var promise =
-        shell.exec(command);
-        // promise.then(err => {
-        //  if (err)
-        //     console.error(err);
-        // });
-    };
     return ansibleVMspawn;
 });

@@ -26,5 +26,8 @@ config.executor.enable = true;
 config.executor.clearOldDataAtStartUp = true;
 config.visualization.svgDirs = ['./icons'];
 
+// RequireJS paths
+config.requirejsPaths.cloudcamp = "./src/common/"
+
 validateConfig(config);
 module.exports = config;

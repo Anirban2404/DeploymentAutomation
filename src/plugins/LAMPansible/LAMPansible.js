@@ -8,1033 +8,242 @@
  */
 
 define([
-        'plugin/PluginConfig',
-        'text!./metadata.json',
-        'plugin/PluginBase'
-    ], function (PluginConfig,
-                 pluginMetadata,
-                 PluginBase) {
-        'use strict';
+    'plugin/PluginConfig',
+    'text!./metadata.json',
+    'plugin/PluginBase',
+    'cloudcamp/webgenerateAnsible',
+    'cloudcamp/dbgenerateAnsible'
+], function (PluginConfig,
+             pluginMetadata,
+             PluginBase,
+             webAnsible,
+             dbAnsible) {
+    'use strict';
 
-        pluginMetadata = JSON.parse(pluginMetadata);
+    pluginMetadata = JSON.parse(pluginMetadata);
 
-        /**
-         * Initializes a new instance of LAMPansible.
-         * @class
-         * @augments {PluginBase}
-         * @classdesc This class represents the plugin LAMPansible.
-         * @constructor
-         */
-        var LAMPansible = function () {
-            // Call base class' constructor.
-            PluginBase.call(this);
-            this.pluginMetadata = pluginMetadata;
-            this.pathToNode = {};
-        };
+    /**
+     * Initializes a new instance of LAMPansible.
+     * @class
+     * @augments {PluginBase}
+     * @classdesc This class represents the plugin LAMPansible.
+     * @constructor
+     */
+    var LAMPansible = function () {
+        // Call base class' constructor.
+        PluginBase.call(this);
+        this.pluginMetadata = pluginMetadata;
+        this.pathToNode = {};
+    };
 
-        /**
-         * Metadata associated with the plugin. Contains id, name, version, description, icon, configStructue etc.
-         * This is also available at the instance at this.pluginMetadata.
-         * @type {object}
-         */
-        LAMPansible.metadata = pluginMetadata;
+    /**
+     * Metadata associated with the plugin. Contains id, name, version, description, icon, configStructue etc.
+     * This is also available at the instance at this.pluginMetadata.
+     * @type {object}
+     */
+    LAMPansible.metadata = pluginMetadata;
 
-        // Prototypical inheritance from PluginBase.
-        LAMPansible.prototype = Object.create(PluginBase.prototype);
-        LAMPansible.prototype.constructor = LAMPansible;
+    // Prototypical inheritance from PluginBase.
+    LAMPansible.prototype = Object.create(PluginBase.prototype);
+    LAMPansible.prototype.constructor = LAMPansible;
 
-        var path = require("path");
-        var fs = require("fs");
+    var path = require("path");
+    var fs = require("fs");
 
-        /**
-         * Main function for the plugin to execute. This will perform the execution.
-         * Notes:
-         * - Always log with the provided logger.[error,warning,info,debug].
-         * - Do NOT put any user interaction logic UI, etc. inside this method.
-         * - callback always has to be called even if error happened.
-         *
-         * @param {function(string, plugin.PluginResult)} callback - the result callback
-         */
-        LAMPansible.prototype.main = function (callback) {
-            // Use self to access core, project, result, logger etc from PluginBase.
-            // These are all instantiated at this point.
-            var self = this,
-                nodeObject;
+    /**
+     * Main function for the plugin to execute. This will perform the execution.
+     * Notes:
+     * - Always log with the provided logger.[error,warning,info,debug].
+     * - Do NOT put any user interaction logic UI, etc. inside this method.
+     * - callback always has to be called even if error happened.
+     *
+     * @param {function(string, plugin.PluginResult)} callback - the result callback
+     */
+    LAMPansible.prototype.main = function (callback) {
+        // Use self to access core, project, result, logger etc from PluginBase.
+        // These are all instantiated at this point.
+        var self = this,
+            nodeObject;
 
-            nodeObject = self.activeNode;
-            this.extractModel();
-        };
+        nodeObject = self.activeNode;
+        this.extractModel();
+    };
 
-        LAMPansible.prototype.extractModel = function (callback) {
-            var self = this;
-            //this.pathToNode={};
-            var webModel =
-                {
-                    WebApplicationModel: {
-                        AppType: "",
-                        AppName: "",
-                        host_ip: "",
-                        srcPath: "",
-                        language: "",
-                        WebEngine: "",
-                        OS: {
-                            name: "",
-                            version: ""
+    LAMPansible.prototype.extractModel = function (callback) {
+        var self = this;
+        //this.pathToNode={};
+        var webModel =
+            {
+                WebApplicationModel: {
+                    AppType: "",
+                    AppName: "",
+                    host_ip: "",
+                    srcPath: "",
+                    language: "",
+                    WebEngine: "",
+                    OS: {
+                        name: "",
+                        version: ""
+                    }
+                }
+            };
+
+        var dbModel =
+            {
+                DBApplicationModel: {
+                    AppType: "",
+                    AppName: "",
+                    host_ip: "",
+                    srcPath: "",
+                    password: "",
+                    port: "",
+                    replication_count: "",
+                    user: "",
+                    dbEngine: "",
+                    OS: {
+                        name: "",
+                        version: ""
+                    }
+                }
+            };
+
+
+        //this.logger.info (this.core.getAttribute(this.activeNode, 'name'));
+
+        // In order to avoid multiple iterative asynchronous 'load' calls we pre-load all the nodes in the state-machine
+        // and builds up a local hash-map from their paths to the node.
+        return this.core.loadSubTree(self.activeNode)
+            .then(function (nodes) {
+                // All the nodes or objects
+                var j,
+                    a,
+                    childNode,
+                    childName,
+                    acq_node,
+                    algo,
+                    childrenPaths;
+
+                for (var i = 0; i < nodes.length; i += 1) {
+                    self.pathToNode[self.core.getPath(nodes[i])] = nodes[i];
+                }
+
+
+                childrenPaths = self.core.getChildrenPaths(self.activeNode);
+                // console.log(childrenPaths.length);
+                for (i = 0; i < childrenPaths.length; i += 1) {
+
+                    childNode = self.pathToNode[childrenPaths[i]];
+                    if (self.isMetaTypeOf(childNode, self.META['HostedOn']) === true) {
+                        childName = self.core.getAttribute(childNode, 'name');
+                        self.logger.info('At childNode', childName);
+                        var src_Path = self.core.getPointerPath(childNode, 'src');
+                        var dst_Path = self.core.getPointerPath(childNode, 'dst');
+                        //var srcNode, dstNode;
+
+                        // self.logger.info(src_Path);
+                        // self.logger.info(dst_Path);
+                        if (src_Path && dst_Path) {
+                            var srcNode = self.pathToNode[src_Path];
+                            var dstNode = self.pathToNode[dst_Path];
+                            self.logger.info(self.core.getAttribute(childNode, 'name'));
+                            self.logger.info('connects');
+                            self.logger.info(self.core.getAttribute(srcNode, 'name'));
+                            self.logger.info('-->');
+                            self.logger.info(self.core.getAttribute(dstNode, 'name'));
                         }
-                    }
-                };
-
-            var dbModel =
-                {
-                    DBApplicationModel: {
-                        AppType: "",
-                        AppName: "",
-                        host_ip: "",
-                        srcPath: "",
-                        password: "",
-                        port: "",
-                        replication_count: "",
-                        user: "",
-                        dbEngine: "",
-                        OS: {
-                            name: "",
-                            version: ""
-                        }
-                    }
-                };
 
 
-            //this.logger.info (this.core.getAttribute(this.activeNode, 'name'));
+                        var src_node = self.core.getAttribute(srcNode, 'name');
+                        // self.logger.info('At srcNode', src_node);
+                        var dst_node = self.core.getAttribute(dstNode, 'name');
+                        // self.logger.info('At dstNode', dst_node);
+                        if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true && self.isMetaTypeOf(dstNode, self.META['Hardware']) === true) {
+                            webModel.WebApplicationModel.AppType = 'WebApplication';
+                            var language = self.core.getAttribute(srcNode, 'language');
+                            webModel.WebApplicationModel.language = language;
+                            self.logger.info(language);
+                            var appName = self.core.getAttribute(srcNode, 'name');
+                            webModel.WebApplicationModel.AppName = appName;
+                            self.logger.info(appName);
+                            var srcPath = self.core.getAttribute(srcNode, 'src');
+                            webModel.WebApplicationModel.srcPath = srcPath;
+                            self.logger.info(srcPath);
+                            var host_ip = self.core.getAttribute(dstNode, 'host_ip');
+                            webModel.WebApplicationModel.host_ip = host_ip;
+                            self.logger.info(host_ip);
 
-            // In order to avoid multiple iterative asynchronous 'load' calls we pre-load all the nodes in the state-machine
-            // and builds up a local hash-map from their paths to the node.
-            return this.core.loadSubTree(self.activeNode)
-                .then(function (nodes) {
-                    // All the nodes or objects
-                    var j,
-                        a,
-                        childNode,
-                        childName,
-                        acq_node,
-                        algo,
-                        childrenPaths;
+                            var acq_path = self.core.getChildrenPaths(srcNode);
+                            for (j = 0; j < acq_path.length; j += 1) {
+                                acq_node = self.pathToNode[acq_path[j]];
+                                var webEngine = self.core.getAttribute(acq_node, 'name');
+                                webModel.WebApplicationModel.WebEngine = webEngine;
+                                self.logger.info(webEngine);
 
-                    for (var i = 0; i < nodes.length; i += 1) {
-                        self.pathToNode[self.core.getPath(nodes[i])] = nodes[i];
-                    }
-
-
-                    childrenPaths = self.core.getChildrenPaths(self.activeNode);
-                    // console.log(childrenPaths.length);
-                    for (i = 0; i < childrenPaths.length; i += 1) {
-
-                        childNode = self.pathToNode[childrenPaths[i]];
-                        if (self.isMetaTypeOf(childNode, self.META['HostedOn']) === true) {
-                            childName = self.core.getAttribute(childNode, 'name');
-                            self.logger.info('At childNode', childName);
-                            var src_Path = self.core.getPointerPath(childNode, 'src');
-                            var dst_Path = self.core.getPointerPath(childNode, 'dst');
-                            //var srcNode, dstNode;
-
-                            // self.logger.info(src_Path);
-                            // self.logger.info(dst_Path);
-                            if (src_Path && dst_Path) {
-                                var srcNode = self.pathToNode[src_Path];
-                                var dstNode = self.pathToNode[dst_Path];
-                                self.logger.info(self.core.getAttribute(childNode, 'name'));
-                                self.logger.info('connects');
-                                self.logger.info(self.core.getAttribute(srcNode, 'name'));
-                                self.logger.info('-->');
-                                self.logger.info(self.core.getAttribute(dstNode, 'name'));
+                            }
+                            var acq_path = self.core.getChildrenPaths(dstNode);
+                            for (j = 0; j < acq_path.length; j += 1) {
+                                acq_node = self.pathToNode[acq_path[j]];
+                                var os_name = self.core.getAttribute(acq_node, 'name');
+                                webModel.WebApplicationModel.OS.name = os_name;
+                                self.logger.info(os_name);
+                                var os_version = self.core.getAttribute(acq_node, 'version');
+                                webModel.WebApplicationModel.OS.version = os_version;
+                                self.logger.info(os_version);
                             }
 
-
-                            var src_node = self.core.getAttribute(srcNode, 'name');
-                            // self.logger.info('At srcNode', src_node);
-                            var dst_node = self.core.getAttribute(dstNode, 'name');
-                            // self.logger.info('At dstNode', dst_node);
-                            if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true && self.isMetaTypeOf(dstNode, self.META['Hardware']) === true) {
-                                webModel.WebApplicationModel.AppType = 'WebApplication';
-                                var language = self.core.getAttribute(srcNode, 'language');
-                                webModel.WebApplicationModel.language = language;
-                                self.logger.info(language);
-                                var appName = self.core.getAttribute(srcNode, 'name');
-                                webModel.WebApplicationModel.AppName = appName;
-                                self.logger.info(appName);
-                                var srcPath = self.core.getAttribute(srcNode, 'src');
-                                webModel.WebApplicationModel.srcPath = srcPath;
-                                self.logger.info(srcPath);
-                                var host_ip = self.core.getAttribute(dstNode, 'host_ip');
-                                webModel.WebApplicationModel.host_ip = host_ip;
-                                self.logger.info(host_ip);
-
-                                var acq_path = self.core.getChildrenPaths(srcNode);
-                                for (j = 0; j < acq_path.length; j += 1) {
-                                    acq_node = self.pathToNode[acq_path[j]];
-                                    var webEngine = self.core.getAttribute(acq_node, 'name');
-                                    webModel.WebApplicationModel.WebEngine = webEngine;
-                                    self.logger.info(webEngine);
-
-                                }
-                                var acq_path = self.core.getChildrenPaths(dstNode);
-                                for (j = 0; j < acq_path.length; j += 1) {
-                                    acq_node = self.pathToNode[acq_path[j]];
-                                    var os_name = self.core.getAttribute(acq_node, 'name');
-                                    webModel.WebApplicationModel.OS.name = os_name;
-                                    self.logger.info(os_name);
-                                    var os_version = self.core.getAttribute(acq_node, 'version');
-                                    webModel.WebApplicationModel.OS.version = os_version;
-                                    self.logger.info(os_version);
-                                }
-
-                                webgenerateAnsible(JSON.stringify(webModel, null, 4));
-                            }
-                            if (self.isMetaTypeOf(srcNode, self.META['DBApplication']) === true && self.isMetaTypeOf(dstNode, self.META['Hardware']) === true) {
-                                dbModel.DBApplicationModel.AppType = 'DBApplication';
-                                var user = self.core.getAttribute(nodes[i], 'user');
-                                dbModel.DBApplicationModel.user = user;
-                                self.logger.info(user);
-                                var password = self.core.getAttribute(srcNode, 'password');
-                                dbModel.DBApplicationModel.password = password;
-                                self.logger.info(password);
-                                var appName = self.core.getAttribute(srcNode, 'name');
-                                dbModel.DBApplicationModel.AppName = appName;
-                                self.logger.info(appName);
-                                var srcPath = self.core.getAttribute(srcNode, 'src');
-                                dbModel.DBApplicationModel.srcPath = srcPath;
-                                self.logger.info(srcPath);
-                                var port = self.core.getAttribute(srcNode, 'port');
-                                dbModel.DBApplicationModel.port = port;
-                                self.logger.info(port);
-                                var host_ip = self.core.getAttribute(dstNode, 'host_ip');
-                                dbModel.DBApplicationModel.host_ip = host_ip;
-                                self.logger.info(host_ip);
-
-                                var acq_path = self.core.getChildrenPaths(srcNode);
-                                for (j = 0; j < acq_path.length; j += 1) {
-                                    acq_node = self.pathToNode[acq_path[j]];
-                                    var dbEngine = self.core.getAttribute(acq_node, 'name');
-                                    dbModel.DBApplicationModel.dbEngine = dbEngine;
-                                    self.logger.info(dbEngine);
-
-                                }
-                                var acq_path = self.core.getChildrenPaths(dstNode);
-                                for (j = 0; j < acq_path.length; j += 1) {
-                                    acq_node = self.pathToNode[acq_path[j]];
-                                    var os_name = self.core.getAttribute(acq_node, 'name');
-                                    dbModel.DBApplicationModel.OS.name = os_name;
-                                    self.logger.info(os_name);
-                                    var os_version = self.core.getAttribute(acq_node, 'version');
-                                    dbModel.DBApplicationModel.OS.version = os_version;
-                                    self.logger.info(os_version);
-                                }
-                                dbgenerateAnsible(JSON.stringify(dbModel, null, 4));
-                            }
-
-                            // Log the name of the child (it's an attribute so we use getAttribute).
-                            // childName = self.core.getAttribute(childNode, 'name');
-                            // self.logger.info('At childNode', childName);
+                            webAnsible.webgenerateAnsible(JSON.stringify(webModel, null, 4));
                         }
+                        if (self.isMetaTypeOf(srcNode, self.META['DBApplication']) === true && self.isMetaTypeOf(dstNode, self.META['Hardware']) === true) {
+                            dbModel.DBApplicationModel.AppType = 'DBApplication';
+                            var user = self.core.getAttribute(nodes[i], 'user');
+                            dbModel.DBApplicationModel.user = user;
+                            self.logger.info(user);
+                            var password = self.core.getAttribute(srcNode, 'password');
+                            dbModel.DBApplicationModel.password = password;
+                            self.logger.info(password);
+                            var appName = self.core.getAttribute(srcNode, 'name');
+                            dbModel.DBApplicationModel.AppName = appName;
+                            self.logger.info(appName);
+                            var srcPath = self.core.getAttribute(srcNode, 'src');
+                            dbModel.DBApplicationModel.srcPath = srcPath;
+                            self.logger.info(srcPath);
+                            var port = self.core.getAttribute(srcNode, 'port');
+                            dbModel.DBApplicationModel.port = port;
+                            self.logger.info(port);
+                            var host_ip = self.core.getAttribute(dstNode, 'host_ip');
+                            dbModel.DBApplicationModel.host_ip = host_ip;
+                            self.logger.info(host_ip);
+
+                            var acq_path = self.core.getChildrenPaths(srcNode);
+                            for (j = 0; j < acq_path.length; j += 1) {
+                                acq_node = self.pathToNode[acq_path[j]];
+                                var dbEngine = self.core.getAttribute(acq_node, 'name');
+                                dbModel.DBApplicationModel.dbEngine = dbEngine;
+                                self.logger.info(dbEngine);
+
+                            }
+                            var acq_path = self.core.getChildrenPaths(dstNode);
+                            for (j = 0; j < acq_path.length; j += 1) {
+                                acq_node = self.pathToNode[acq_path[j]];
+                                var os_name = self.core.getAttribute(acq_node, 'name');
+                                dbModel.DBApplicationModel.OS.name = os_name;
+                                self.logger.info(os_name);
+                                var os_version = self.core.getAttribute(acq_node, 'version');
+                                dbModel.DBApplicationModel.OS.version = os_version;
+                                self.logger.info(os_version);
+                            }
+                            dbAnsible.dbgenerateAnsible(JSON.stringify(dbModel, null, 4));
+                        }
+
+                        // Log the name of the child (it's an attribute so we use getAttribute).
+                        // childName = self.core.getAttribute(childNode, 'name');
+                        // self.logger.info('At childNode', childName);
                     }
-
-                    return webModel;
-                })
-                .nodeify(callback);
-        };
-
-
-        // var fs = require('fs');
-        // var deleteDirectory = function (path) {
-        //     fs.readdirSync(path).forEach(function (file, index) {
-        //         var curPath = path + "/" + file;
-        //         if (fs.lstatSync(curPath).isDirectory()) { // recurse
-        //             deleteDirectory(curPath);
-        //         } else { // delete file
-        //             fs.unlinkSync(curPath);
-        //         }
-        //     });
-        //     fs.rmdirSync(path);
-        // };
-
-        var webgenerateAnsible = function (webModel) {
-            console.log("Generate Web Ansible Scripts..");
-            console.log(webModel);
-            // webModel.
-            var readJSON = JSON.parse(webModel);
-            var AppType = readJSON['WebApplicationModel']['AppType'];
-            var name = readJSON['WebApplicationModel']['AppName'];
-            var hostip = readJSON['WebApplicationModel']['host_ip'];
-            var srcPath = readJSON['WebApplicationModel']['srcPath'];
-            var language = readJSON['WebApplicationModel']['language'];
-            var webEngine = readJSON['WebApplicationModel']['WebEngine'];
-            var ostype = readJSON['WebApplicationModel']['OS']['name'];
-            var osversion = readJSON['WebApplicationModel']['OS']['version'];
-
-            console.log(AppType);
-            console.log(name);
-            console.log(srcPath);
-            console.log(language);
-            console.log(webEngine);
-
-            console.log(hostip);
-            console.log(ostype);
-            console.log(osversion);
-
-            // Create ansible file for WebServer
-            var fs = require('fs');
-            var fs = require('fs-extra')
-            var path = require("path");
-            var scriptdir = path.resolve(".");
-            var mkdirp = require('mkdirp')
-            scriptdir += "/examples/ansibleScript/";
-            scriptdir += "LAMPApplication";
-            scriptdir += Math.floor(Date.now());
-            console.log(scriptdir);
-            // if (fs.existsSync(scriptdir)) {
-            //     console.log("Deleting: ", scriptdir);
-            //     deleteDirectory(scriptdir);
-            //     console.log("Deleted: ", scriptdir);
-            // }
-            fs.ensureDirSync(scriptdir, function (err) {
-                if (err) {
-                    console.log(err);
-                } else {
-                    console.log('Directory ' + directory + ' created.');
                 }
-            });
 
-            //if (fs.existsSync(scriptdir))
-            var hostfile = scriptdir + '/' + 'hosts';
-            console.log(hostfile);
-
-            var hostContent = "[webserver]\n";
-            hostContent += hostip;
-            hostContent += " ansible_connection=ssh ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3\n";
-            //console.log (hostContent);
-            if (fs.exists(hostfile)) {
-                console.log("The host file is appending..!");
-                fs.appendFile(hostfile, hostContent, function (err) {
-                    if (err) {
-                        return console.log(err);
-                    }
-                    console.log("The host file was appended!");
-                });
-            }
-            else {
-                fs.writeFileSync(hostfile, hostContent, function (err) {
-                    if (err) {
-                        return console.log(err);
-                    }
-                    console.log("The host file was saved!");
-                });
-            }
-
-
-            //Genarating to the main playbook
-
-            var deploydir = path.resolve(".");
-            var deployFile = scriptdir + '/' + 'site.yml';
-            console.log(deployFile);
-            if (fs.exists(deployFile)) {
-                //console.log('deploydir: ' + deploydir);
-                var siteTempfile = deploydir + "/templates/siteTemp";
-                console.log(siteTempfile);
-                //Read the header file
-                var siteTemp = fs.readFileSync(siteTempfile, 'utf8');
-
-                fs.writeFileSync(deployFile, siteTemp);
-            }
-
-            var invars = "\n\n- include: webapp.yml";
-
-            fs.appendFileSync(deployFile, invars);
-
-            var webdeployFile = scriptdir + '/' + 'webapp.yml';
-            var LAMPwebsiteTempfile = deploydir + "/templates/LAMPwebsiteTemp";
-            var LAMPwebsiteTemp = fs.readFileSync(LAMPwebsiteTempfile, 'utf8');
-
-            fs.writeFileSync(webdeployFile, LAMPwebsiteTemp);
-            var vars = "\n\n  vars:\n";
-            vars += "    - path: " + srcPath;
-            console.log(vars);
-            fs.appendFileSync(webdeployFile, vars);
-
-            // Creating roles directory
-            var roleDir = scriptdir + "/roles";
-
-            fs.ensureDirSync(roleDir, function (err) {
-                if (err) {
-                    console.log(err);
-                } else {
-                    console.log('Role Directory ' + directory + ' created.');
-                }
-            });
-
-            //  Creating Application directory in roles directory
-            var roleAppDir = roleDir + "/" + name;
-            fs.ensureDirSync(roleAppDir, function (err) {
-                if (err) {
-                    console.log(err);
-                } else {
-                    console.log('Role Directory ' + directory + ' created.');
-                }
-            });
-
-            // Creating Tasks directory in Application directory
-            var roleAppDir = roleDir + "/" + name;
-            fs.ensureDirSync(roleAppDir, function (err) {
-                if (err) {
-                    console.log(err);
-                } else {
-                    console.log('Role Directory ' + directory + ' created.');
-                }
-            });
-            // Creating Main Task file
-            var roleTaskDir = roleAppDir + "/" + "tasks";
-            fs.ensureDirSync(roleTaskDir, function (err) {
-                if (err) {
-                    console.log(err);
-                } else {
-                    console.log('Role Directory ' + directory + ' created.');
-                }
-            });
-            // Creating Main Task file
-            var mainTaskFile = roleTaskDir + "/" + "main.yml";
-            //language
-            fs.writeFileSync(mainTaskFile, "---\n");
-
-            // MySQL driver
-            var mysql = require('mysql');
-            var replace = require("replace");
-            var conn = mysql.createConnection({
-                // host: "127.0.0.1",
-                user: "root",
-                password: "isislab"
-            });
-
-            // Connect to Database
-            conn.connect(function (err) {
-                if (err) throw err;
-                console.log("Connected!");
-            });
-
-
-            if (language.toLowerCase() == "php") {
-                var sql = "SELECT b.pkg_name FROM softwaredependency.packages b ,softwaredependency.swdependency a where b.app_id=a.id and a.AppType='" + language.toLowerCase() + "'";
-                sql += "and b.sw_id in (select app_sw_id FROM softwaredependency.os_dependency where os_id in (SELECT id FROM softwaredependency.os_pkg_mgr ";
-                sql += "where concat(OS_type,OS_version) = '" + ostype + osversion + "'))";
-                console.log(sql);
-                var install_language = "- include: install_" + language.toLowerCase() + ".yml\n";
-
-                fs.appendFileSync(mainTaskFile, install_language);
-                console.log(install_language);
-
-                var ubuntu_pkg_vars = "\n\n      ubuntu_" + language.toLowerCase() + "_pkgs:\n";
-                ubuntu_pkg_vars += "        <<packages>>"
-                fs.appendFileSync(webdeployFile, ubuntu_pkg_vars);
-                console.log(webdeployFile);
-                var pkg_result = "";
-                var replace = require("replace");
-
-                // Query the DataBase
-                conn.query(sql, function (err, rows) {
-                    if (err) throw err;
-                    for (var row in rows) {
-                        var rowResult = "         - " + rows[row].pkg_name;
-                        console.log(rowResult);
-                        pkg_result += rowResult + "\n";
-                    }
-
-                    replace({
-                        regex: "        <<packages>>",
-                        replacement: pkg_result,
-                        paths: [webdeployFile],
-                        recursive: true,
-                        silent: false,
-                    });
-
-                });
-
-                // End Database Connection
-                // conn.end(function (err) {
-                //     if (err) {
-                //         throw err;
-                //         console.log(err);
-                //     }
-                //     else
-                //         console.log("Disconnected!");
-                // });
-                console.log(ostype + osversion);
-                var mysqlTempFile;
-                if ((ostype + osversion).toLowerCase() === "ubuntu16.04")
-                    mysqlTempFile = deploydir + "/templates/PHP16Temp";
-                else if ((ostype + osversion).toLowerCase() === "ubuntu14.04")
-                    mysqlTempFile = deploydir + "/templates/PHP14Temp";
-                console.log(mysqlTempFile);
-                //Read the header file
-                var phpTemp = fs.readFileSync(mysqlTempFile, 'utf8');
-
-                // Creating Task file
-                var phpTaskFile = roleTaskDir + "/" + "install_" + language.toLowerCase() + ".yml";
-                console.log(phpTaskFile);
-                fs.writeFile(phpTaskFile, phpTemp, function (err) {
-                    if (err) {
-                        return console.log(err);
-                    }
-
-                    console.log("The node file was generated!");
-                });
-
-                var copyCode = "- include: copy_code.yml\n";
-                fs.appendFileSync(mainTaskFile, copyCode);
-                //Read the header file
-                var copyTempfile = deploydir + "/templates/copy_code_LAMP";
-                var copyTemp = fs.readFileSync(copyTempfile, 'utf8');
-                // Creating Copy-code file
-                var copyTaskFile = roleTaskDir + "/" + "copy_code.yml";
-                console.log(copyTaskFile);
-                fs.writeFile(copyTaskFile, copyTemp, function (err) {
-                    if (err) {
-                        return console.log(err);
-                    }
-
-                    console.log("The copy file was generated!");
-                });
-
-                // Creating Template files
-                var roleTempDir = roleAppDir + "/" + "templates";
-                fs.ensureDirSync(roleTempDir, function (err) {
-                    if (err) {
-                        console.log(err);
-                    } else {
-                        console.log('Role Directory ' + directory + ' created.');
-                    }
-                });
-                //Read the header file
-                var phpiniTempfile = deploydir + "/templates/php.ini.j2Temp";
-                var phpiniTemp = fs.readFileSync(phpiniTempfile, 'utf8');
-                // Creating Copy-code file
-                var phpiniTempFile = roleTempDir + "/" + "php.ini.j2";
-                console.log(phpiniTempFile);
-                fs.writeFile(phpiniTempFile, phpiniTemp, function (err) {
-                    if (err) {
-                        return console.log(err);
-                    }
-
-                    console.log("The php.ini.j2 file was generated!");
-                });
-
-
-                //Read the header file
-                var confTempfile = deploydir + "/templates/www.conf.j2Temp";
-                var confTemp = fs.readFileSync(confTempfile, 'utf8');
-                // Creating Copy-code file
-                var confTempFile = roleTempDir + "/" + "www.conf.j2";
-                console.log(confTempFile);
-                fs.writeFile(confTempFile, confTemp, function (err) {
-                    if (err) {
-                        return console.log(err);
-                    }
-
-                    console.log("The www.conf.j2 file was generated!");
-                });
-
-
-            }
-
-            if (webEngine == "ApacheHTTPServer") {
-                var webengine = "apache";
-                var install_webengine = "- include: install_" + webengine + ".yml";
-                fs.appendFileSync(mainTaskFile, install_webengine);
-
-                var en_sql = "SELECT b.pkg_name FROM softwaredependency.packages b ,softwaredependency.swdependency a where b.app_id=a.id and a.AppType='" + webengine + "'";
-                en_sql += "and b.sw_id in (select app_sw_id FROM softwaredependency.os_dependency where os_id in (SELECT id FROM softwaredependency.os_pkg_mgr ";
-                en_sql += "where concat(OS_type,OS_version) = '" + ostype + osversion + "'))";
-                console.log(en_sql);
-                var install_webengine = "- include: install_" + webengine + ".yml";
-                //Read the header file
-                var apacheTempfile = deploydir + "/templates/apache2";
-                var apacheTemp = fs.readFileSync(apacheTempfile, 'utf8');
-                // Creating Copy-code file
-                var apacheTaskFile = roleTaskDir + "/" + "install_" + webengine + ".yml";
-                console.log(copyTaskFile);
-                fs.writeFile(apacheTaskFile, apacheTemp, function (err) {
-                    if (err) {
-                        return console.log(err);
-                    }
-
-                    console.log("The apache file was generated!");
-                });
-                var pkg_result = "";
-                var replace = require("replace");
-
-                var en_result = "";
-                // Query the DataBase
-                conn.query(en_sql, function (err, rows) {
-                    if (err) throw err;
-                    for (var row in rows) {
-                        var rowResult = rows[row].pkg_name;
-                        console.log(rowResult);
-                        en_result += rowResult + "\n";
-                    }
-
-                    replace({
-                        regex: "<<apache>>",
-                        replacement: en_result,
-                        paths: [apacheTaskFile],
-                        recursive: true,
-                        silent: true,
-                    });
-
-                });
-
-                // Creating Handler files
-                var roleHandlerDir = roleAppDir + "/" + "handlers";
-                fs.ensureDirSync(roleHandlerDir, function (err) {
-                    if (err) {
-                        console.log(err);
-                    } else {
-                        console.log('Handler Directory ' + directory + ' created.');
-                    }
-                });
-
-                //Read the header file
-                var apacheHandlerfile = deploydir + "/templates/apacheHandler";
-                var apacheHandler = fs.readFileSync(apacheHandlerfile, 'utf8');
-                // Creating Copy-code file
-                var apacheHandlerFile = roleHandlerDir + "/" + "main.yml";
-                console.log(apacheHandlerFile);
-                fs.writeFile(apacheHandlerFile, apacheHandler, function (err) {
-                    if (err) {
-                        return console.log(err);
-                    }
-
-                    console.log("The apacheHandler file was generated!");
-                });
-
-                var hndlr_result = "";
-                // Query the DataBase
-                conn.query(en_sql, function (err, rows) {
-                    if (err) throw err;
-                    for (var row in rows) {
-                        var rowResult = rows[row].pkg_name;
-                        console.log(rowResult);
-                        hndlr_result += rowResult + " ";
-                    }
-
-                    replace({
-                        regex: "<<apache>>",
-                        replacement: hndlr_result,
-                        paths: [apacheHandlerFile],
-                        recursive: true,
-                        silent: true,
-                    });
-
-                });
-
-            }
-            var roles = "\n\n  roles:\n";
-            roles += "    - " + name;
-            fs.appendFileSync(webdeployFile, roles);
-
-            // End Database Connection
-            conn.end(function (err) {
-                if (err) {
-                    throw err;
-                    console.log(err);
-                }
-                else {
-                    console.log("Disconnected!");
-                }
-            });
-
-            var cp = require('shelljs');
-            var command = "ansible-playbook " + deployFile;
-            console.log(command);
-            var exec = cp.exec;
-
-
-            var sleep = require('sleep');
-            require('file-size-watcher').watch(hostfile).on('sizeChange',
-                function callback(newSize, oldSize) {
-                    console.log('The file size changed from ' + oldSize + ' to ' + newSize);
-                    if (newSize > oldSize) {
-                        //sleep.sleep(10);
-                        var shell = require('shelljs');
-                        shell.cd(scriptdir);
-                        var command = "ansible-playbook " + deployFile;
-                        var exec = shell.exec;
-                        console.log(command);
-                        exec(command);
-                    }
-                });
-
-        };
-
-        var dbgenerateAnsible = function (dbModel) {
-            console.log("Generate DB Ansible Scripts..");
-            console.log(dbModel);
-            // webModel.
-            var readJSON = JSON.parse(dbModel);
-            var AppType = readJSON['DBApplicationModel']['AppType'];
-            var name = readJSON['DBApplicationModel']['AppName'];
-            var hostip = readJSON['DBApplicationModel']['host_ip'];
-            var srcPath = readJSON['DBApplicationModel']['srcPath'];
-            var user = readJSON['DBApplicationModel']['user'];
-            var password = readJSON['DBApplicationModel']['password'];
-            var dbEngine = readJSON['DBApplicationModel']['dbEngine'];
-            var port = readJSON['DBApplicationModel']['port'];
-            var ostype = readJSON['DBApplicationModel']['OS']['name'];
-            var osversion = readJSON['DBApplicationModel']['OS']['version'];
-
-            console.log(AppType);
-            console.log(name);
-            console.log(srcPath);
-            console.log(user);
-
-            console.log(password);
-            console.log(port);
-
-            console.log(dbEngine);
-
-            console.log(hostip);
-            console.log(ostype);
-            console.log(osversion);
-
-            // Create ansible file for DBServer
-            var fs = require('fs');
-            var fs = require('fs-extra')
-            var path = require("path");
-            var scriptdir = path.resolve(".");
-            var mkdirp = require('mkdirp')
-            scriptdir += "/examples/ansibleScript/";
-            scriptdir += "LAMPApplication";
-            scriptdir += Math.floor(Date.now());
-            console.log(scriptdir);
-            // if (fs.existsSync(scriptdir)) {
-            //     console.log("Deleting: ", scriptdir);
-            //     deleteDirectory(scriptdir);
-            //     console.log("Deleted: ", scriptdir);
-            // }
-            fs.ensureDirSync(scriptdir, function (err) {
-                if (err) {
-                    console.log(err);
-                } else {
-                    console.log('Directory ' + directory + ' created.');
-                }
-            });
-
-            var hostfile = scriptdir + '/' + 'hosts';
-            console.log(hostfile);
-
-            var hostContent = "[dbserver]\n";
-            hostContent += hostip;
-            hostContent += " ansible_connection=ssh ansible_user=ubuntu\n";
-            //console.log (hostContent);
-
-            if (fs.exists(hostfile)) {
-                console.log("The host file is appending..!");
-                fs.appendFile(hostfile, hostContent, function (err) {
-                    if (err) {
-                        return console.log(err);
-                    }
-                    console.log("The host file was appended!");
-                });
-            }
-            else {
-                fs.writeFileSync(hostfile, hostContent, function (err) {
-                    if (err) {
-                        return console.log(err);
-                    }
-                    console.log("The host file was saved!");
-                });
-            }
-
-            //Genarating to the main playbook
-
-            var deploydir = path.resolve(".");
-            var deployFile = scriptdir + '/' + 'site.yml';
-            console.log(deployFile);
-            if (fs.exists(deployFile)) {
-                //console.log('deploydir: ' + deploydir);
-                var siteTempfile = deploydir + "/templates/siteTemp";
-                console.log(siteTempfile);
-                //Read the header file
-                var siteTemp = fs.readFileSync(siteTempfile, 'utf8');
-
-                fs.writeFileSync(deployFile, siteTemp);
-            }
-
-            var invars = "\n\n- include: dbapp.yml";
-
-            fs.appendFileSync(deployFile, invars);
-
-            console.log("scriptdir", scriptdir);
-
-
-
-            var dbdeployFile = scriptdir + '/' + 'dbapp.yml';
-            var LAMPdbTempfile = deploydir + "/templates/LAMPdbTemp";
-            var LAMPdbTemp = fs.readFileSync(LAMPdbTempfile, 'utf8');
-            console.log("srcPath", srcPath);
-            fs.writeFileSync(dbdeployFile, LAMPdbTemp);
-            var _vars = "\n\n  vars:\n";
-            _vars += "    - path: " + srcPath;
-            console.log(_vars);
-            fs.appendFileSync(dbdeployFile, _vars);
-
-            // Creating roles directory
-            var roleDir = scriptdir + "/roles";
-
-            fs.ensureDirSync(roleDir, function (err) {
-                if (err) {
-                    console.log(err);
-                } else {
-                    console.log('Role Directory ' + directory + ' created.');
-                }
-            });
-
-            //  Creating Application directory in roles directory
-            var roleAppDir = roleDir + "/" + name;
-            fs.ensureDirSync(roleAppDir, function (err) {
-                if (err) {
-                    console.log(err);
-                } else {
-                    console.log('Role Directory ' + directory + ' created.');
-                }
-            });
-
-            // Creating Tasks directory in Application directory
-            var roleAppDir = roleDir + "/" + name;
-            fs.ensureDirSync(roleAppDir, function (err) {
-                if (err) {
-                    console.log(err);
-                } else {
-                    console.log('Role Directory ' + directory + ' created.');
-                }
-            });
-            // Creating Main Task file
-            var roleTaskDir = roleAppDir + "/" + "tasks";
-            fs.ensureDirSync(roleTaskDir, function (err) {
-                if (err) {
-                    console.log(err);
-                } else {
-                    console.log('Role Directory ' + directory + ' created.');
-                }
-            });
-            // Creating Main Task file
-            var mainTaskFile = roleTaskDir + "/" + "main.yml";
-            //user
-            fs.writeFileSync(mainTaskFile, "---\n");
-
-            // MySQL driver
-            var mysql = require('mysql');
-            var replace = require("replace");
-            var conn = mysql.createConnection({
-                // host: "127.0.0.1",
-                user: "root",
-                password: "isislab"
-            });
-
-            // Connect to Database
-            conn.connect(function (err) {
-                if (err) throw err;
-                console.log("Connected!");
-            });
-
-
-            if (dbEngine.toLowerCase() == "mysql") {
-                var copyCode = "- include: copy_code.yml\n";
-                fs.appendFileSync(mainTaskFile, copyCode);
-                //Read the header file
-                var copyTempfile = deploydir + "/templates/copy_code_LAMP";
-                var copyTemp = fs.readFileSync(copyTempfile, 'utf8');
-                // Creating Copy-code file
-                var copyTaskFile = roleTaskDir + "/" + "copy_code.yml";
-                console.log(copyTaskFile);
-                fs.writeFile(copyTaskFile, copyTemp, function (err) {
-                    if (err) {
-                        return console.log(err);
-                    }
-
-                    console.log("The copy file was generated!");
-                });
-
-                var sql = "SELECT b.pkg_name FROM softwaredependency.packages b ,softwaredependency.swdependency a where b.app_id=a.id and a.AppType='" + dbEngine.toLowerCase() + "'";
-                sql += "and b.sw_id in (select app_sw_id FROM softwaredependency.os_dependency where os_id in (SELECT id FROM softwaredependency.os_pkg_mgr ";
-                sql += "where concat(OS_type,OS_version) = '" + ostype + osversion + "'))";
-                console.log(sql);
-                var install_dbEngine = "- include: install_" + dbEngine.toLowerCase() + ".yml\n";
-
-                fs.appendFileSync(mainTaskFile, install_dbEngine);
-                console.log(install_dbEngine);
-
-                var mysqlconf = "\n      mysql_port: 3306 #Default is 3306, please change it if you are using non-standard\n";
-                mysqlconf += "      mysql_bind_address: \"0.0.0.0\" #Change it to 0.0.0.0,if you want to listen everywhere\n";
-                mysqlconf += "      mysql_user: root\n";
-                mysqlconf += "      mysql_root_pass: admin #MySQL Root Password\n";
-
-                fs.appendFileSync(dbdeployFile, mysqlconf);
-
-
-                var ubuntu_pkg_vars = "\n\n      ubuntu_" + dbEngine.toLowerCase() + "_pkgs:\n";
-                ubuntu_pkg_vars += "        <<packages>>"
-                fs.appendFileSync(dbdeployFile, ubuntu_pkg_vars);
-                console.log(dbdeployFile);
-                var pkg_result = "";
-                var replace = require("replace");
-
-                // Query the DataBase
-                conn.query(sql, function (err, rows) {
-                    if (err) throw err;
-                    for (var row in rows) {
-                        var rowResult = "         - " + rows[row].pkg_name;
-                        console.log(rowResult);
-                        pkg_result += rowResult + "\n";
-                    }
-
-                    replace({
-                        regex: "        <<packages>>",
-                        replacement: pkg_result,
-                        paths: [dbdeployFile],
-                        recursive: true,
-                        silent: false,
-                    });
-
-                });
-
-                // End Database Connection
-                // conn.end(function (err) {
-                //     if (err) {
-                //         throw err;
-                //         console.log(err);
-                //     }
-                //     else
-                //         console.log("Disconnected!");
-                // });
-                console.log(ostype + osversion);
-                var mysqlTempFile = deploydir + "/templates/mysqlTemp";
-
-                console.log(mysqlTempFile);
-                //Read the header file
-                var mysqlTemp = fs.readFileSync(mysqlTempFile, 'utf8');
-
-                // Creating Task file
-                var mysqlTaskFile = roleTaskDir + "/" + "install_" + dbEngine.toLowerCase() + ".yml";
-                console.log(mysqlTaskFile);
-                fs.writeFile(mysqlTaskFile, mysqlTemp, function (err) {
-                    if (err) {
-                        return console.log(err);
-                    }
-
-                    console.log("The node file was generated!");
-                });
-
-
-
-                // Creating Template files
-                var roleTempDir = roleAppDir + "/" + "templates";
-                fs.ensureDirSync(roleTempDir, function (err) {
-                    if (err) {
-                        console.log(err);
-                    } else {
-                        console.log('Role Directory ' + directory + ' created.');
-                    }
-                });
-                //Read the header file
-                var cnfiniTempfile = deploydir + "/templates/my.cnf.j2Temp";
-                var cnfiniTemp = fs.readFileSync(cnfiniTempfile, 'utf8');
-                // Creating Copy-code file
-                var cnfiniTempFile = roleTempDir + "/" + "my.cnf.j2";
-                console.log(cnfiniTempFile);
-                fs.writeFile(cnfiniTempFile, cnfiniTemp, function (err) {
-                    if (err) {
-                        return console.log(err);
-                    }
-
-                    console.log("The my.cnf.j2 file was generated!");
-                });
-
-
-                //Read the header file
-                var confTempfile = deploydir + "/templates/root.cnf.j2Temp";
-                var confTemp = fs.readFileSync(confTempfile, 'utf8');
-                // Creating Copy-code file
-                var confTempFile = roleTempDir + "/" + "root.cnf.j2";
-                console.log(confTempFile);
-                fs.writeFile(confTempFile, confTemp, function (err) {
-                    if (err) {
-                        return console.log(err);
-                    }
-
-                    console.log("The root.cnf.j2 file was generated!");
-                });
-
-
-                // Creating Handler files
-                var roleHandlerDir = roleAppDir + "/" + "handlers";
-                fs.ensureDirSync(roleHandlerDir, function (err) {
-                    if (err) {
-                        console.log(err);
-                    } else {
-                        console.log('Handler Directory ' + directory + ' created.');
-                    }
-                });
-
-                //Read the header file
-                var mysqlHandlerfile = deploydir + "/templates/mysqlHandler";
-                var mysqlHandler = fs.readFileSync(mysqlHandlerfile, 'utf8');
-                // Creating Copy-code file
-                var mysqlHandlerFile = roleHandlerDir + "/" + "main.yml";
-                console.log(mysqlHandlerFile);
-                fs.writeFile(mysqlHandlerFile, mysqlHandler, function (err) {
-                    if (err) {
-                        return console.log(err);
-                    }
-
-                    console.log("The mysqlHandler file was generated!");
-                });
-            }
-
-
-            var roles = "\n\n  roles:\n";
-            roles += "    - " + name;
-            fs.appendFileSync(dbdeployFile, roles);
-
-            // End Database Connection
-            conn.end(function (err) {
-                if (err) {
-                    throw err;
-                    console.log(err);
-                }
-                else {
-                    console.log("Disconnected!");
-                }
-            });
-
-            var cp = require('shelljs');
-            var command = "ansible-playbook " + deployFile;
-            console.log(command);
-            var exec = cp.exec;
-
-
-            var sleep = require('sleep');
-            require('file-size-watcher').watch(hostfile).on('sizeChange',
-                function callback(newSize, oldSize) {
-                    console.log('The file size changed from ' + oldSize + ' to ' + newSize);
-                    if (newSize > oldSize) {
-                        //sleep.sleep(10);
-                        var shell = require('shelljs');
-                        shell.cd(scriptdir);
-                        var command = "ansible-playbook " + deployFile;
-                        var exec = shell.exec;
-                        console.log(command);
-                        exec(command);
-                    }
-                });
-        };
-
-        return LAMPansible;
-    }
-)
-;
+                return webModel;
+            })
+            .nodeify(callback);
+    };
+    return LAMPansible;
+});
