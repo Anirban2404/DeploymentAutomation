@@ -19,5 +19,5 @@
           nics:
             - net-name: "{{ Network_Name }}"
           wait: yes
-          #timeout: 180
+          timeout: 180
           state: present  # because we need to create and not delete

@@ -11,11 +11,15 @@ define([
     'plugin/PluginConfig',
     'text!./metadata.json',
     'plugin/PluginBase',
-    'cloudcamp/openstackVMspawn'
+    'cloudcamp/openstackVMspawn',
+    'cloudcamp/webgenerateAnsible',
+    'cloudcamp/dbgenerateAnsible'
 ], function (PluginConfig,
              pluginMetadata,
              PluginBase,
-             openstackVMspawn) {
+             openstackVMspawn,
+             webAnsible,
+             dbAnsible) {
     'use strict';
 
     pluginMetadata = JSON.parse(pluginMetadata);
@@ -81,9 +85,10 @@ define([
 
     ansibleVMspawn.prototype.extractDataModel = function (callback) {
         var self = this;
-
+        var Q = require("q");
         //self.pathToNode={};
-
+        var wvisited = false;
+        var dvisited = false;
         //self.logger.info (self.core.getAttribute(self.activeNode, 'name'));
 
         // var dataModel =
@@ -115,12 +120,46 @@ define([
                 }
             };
 
+        var webModel =
+            {
+                WebApplicationModel: {
+                    AppType: "",
+                    AppName: "",
+                    host_ip: "",
+                    srcPath: "",
+                    language: "",
+                    WebEngine: "",
+                    OS: {
+                        name: "",
+                        version: ""
+                    }
+                }
+            };
+
+
+        var dbModel =
+            {
+                DBApplicationModel: {
+                    AppType: "",
+                    AppName: "",
+                    host_ip: "",
+                    srcPath: "",
+                    password: "",
+                    port: "",
+                    replication_count: "",
+                    user: "",
+                    dbEngine: "",
+                    OS: {
+                        name: "",
+                        version: ""
+                    }
+                }
+            };
 
         // In order to avoid multiple iterative asynchronous 'load' calls we pre-load all the nodes in the state-machine
         // and builds up a local hash-map from their paths to the node.
         return this.core.loadSubTree(self.activeNode)
             .then(function (nodes) {
-
 
                 // All the nodes or objects
                 for (var i = 0; i < nodes.length; i += 1) {
@@ -128,6 +167,8 @@ define([
                     //self.logger.info(self.core.getAttribute(nodes[i], 'name'));
                 }
 
+                var dstNodes = [];
+                var srcNodes = [];
                 var childrenPaths = self.core.getChildrenPaths(self.activeNode);
                 // console.log(childrenPaths.length);
                 for (i = 0; i < childrenPaths.length; i += 1) {
@@ -151,10 +192,16 @@ define([
 
 
                         var src_node = self.core.getAttribute(srcNode, 'name');
-                        // self.logger.info('At srcNode', src_node);
+                        self.logger.info('At srcNode', src_node);
+
+                        if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true)
+                            srcNodes.push('WebApplication');
+                        else if (self.isMetaTypeOf(srcNode, self.META['DBApplication']) === true)
+                            srcNodes.push('DBApplication');
+
                         var dst_node = self.core.getAttribute(dstNode, 'name');
-                        // self.logger.info('At dstNode', dst_node);
-                        if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true && self.isMetaTypeOf(dstNode, self.META['OpenStack']) === true) {
+                        self.logger.info('At dstNode', dst_node);
+                        if (self.isMetaTypeOf(dstNode, self.META['OpenStack']) === true) {
                             var flavor_name = self.core.getAttribute(dstNode, 'flavor_name');
                             dataModel.ansibleModel.flavor_name = flavor_name;
                             self.logger.info(flavor_name);
@@ -174,13 +221,124 @@ define([
                                 var acq_node = self.pathToNode[acq_path[j]];
                                 var os_name = self.core.getAttribute(acq_node, 'name');
                                 dataModel.ansibleModel.OS.name = os_name;
+                                webModel.WebApplicationModel.OS.name = os_name;
+                                dbModel.DBApplicationModel.OS.name = os_name;
                                 self.logger.info(os_name);
                                 var os_version = self.core.getAttribute(acq_node, 'version');
                                 dataModel.ansibleModel.OS.version = os_version;
+                                webModel.WebApplicationModel.OS.version = os_version;
+                                dbModel.DBApplicationModel.OS.version = os_version;
                                 self.logger.info(os_version);
                             }
 
-                           // openstackVMspawn.spawnVM(JSON.stringify(dataModel, null, 4));
+                            if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true) {
+                                wvisited = true;
+
+                                webModel.WebApplicationModel.AppType = 'WebApplication';
+                                var language = self.core.getAttribute(srcNode, 'language');
+                                webModel.WebApplicationModel.language = language;
+                                self.logger.info(language);
+                                var appName = self.core.getAttribute(srcNode, 'name');
+                                webModel.WebApplicationModel.AppName = appName;
+                                self.logger.info(appName);
+                                var srcPath = self.core.getAttribute(srcNode, 'src');
+                                webModel.WebApplicationModel.srcPath = srcPath;
+                                self.logger.info(srcPath);
+
+
+                                var acq_path = self.core.getChildrenPaths(srcNode);
+                                for (j = 0; j < acq_path.length; j += 1) {
+                                    acq_node = self.pathToNode[acq_path[j]];
+                                    var webEngine = self.core.getAttribute(acq_node, 'name');
+                                    webModel.WebApplicationModel.WebEngine = webEngine;
+                                    self.logger.info(webEngine);
+
+                                }
+
+                            }
+
+                            if (self.isMetaTypeOf(srcNode, self.META['DBApplication']) === true) {
+                                wvisited = true;
+
+                                dbModel.DBApplicationModel.AppType = 'DBApplication';
+                                var user = self.core.getAttribute(nodes[i], 'user');
+                                dbModel.DBApplicationModel.user = user;
+                                self.logger.info(user);
+                                var password = self.core.getAttribute(srcNode, 'password');
+                                dbModel.DBApplicationModel.password = password;
+                                self.logger.info(password);
+                                var appName = self.core.getAttribute(srcNode, 'name');
+                                dbModel.DBApplicationModel.AppName = appName;
+                                self.logger.info(appName);
+                                var srcPath = self.core.getAttribute(srcNode, 'src');
+                                dbModel.DBApplicationModel.srcPath = srcPath;
+                                self.logger.info(srcPath);
+                                var port = self.core.getAttribute(srcNode, 'port');
+                                dbModel.DBApplicationModel.port = port;
+                                self.logger.info(port);
+
+
+                                var acq_path = self.core.getChildrenPaths(srcNode);
+                                for (j = 0; j < acq_path.length; j += 1) {
+                                    acq_node = self.pathToNode[acq_path[j]];
+                                    var dbEngine = self.core.getAttribute(acq_node, 'name');
+                                    dbModel.DBApplicationModel.dbEngine = dbEngine;
+                                    self.logger.info(dbEngine);
+                                }
+
+                            }
+
+                            var fs = require('fs');
+                            var hostTempfile = "src/plugins/ansibleVMspawn/hostTemp" + vmName;
+
+
+                            console.log(dstNodes.indexOf(vmName));
+
+                            if (dstNodes.indexOf(dst_node) === -1) {
+                                openstackVMspawn.spawnVM(JSON.stringify(dataModel, null, 4));
+                                // console.log(JSON.stringify(dataModel, null, 4));
+                                // console.log(vmName);
+                                dstNodes.push(vmName);
+                            }
+                            else if (dstNodes.indexOf(dst_node) > -1) {
+                                console.log(dst_node + ' already exists');
+                            }
+
+                            console.log(dstNodes);
+                            var visited = false;
+                            var sleep = require('sleep');
+                            console.log(srcNodes);
+                            require('file-size-watcher').watch(hostTempfile).on('sizeChange',
+                                function callback(newSize, oldSize) {
+                                    console.log('The file size changed from ' + oldSize + ' to ' + newSize);
+
+                                    if (newSize > oldSize + 10 && visited === false) {
+                                        visited = true;
+                                        sleep.sleep(1);
+                                        var src_node = self.core.getAttribute(srcNode, 'name');
+                                        self.logger.info('At srcNode', src_node);
+                                        var reader = fs.readFileSync(hostTempfile, 'utf8');
+                                        //var host_ip = self.core.getAttribute(dstNode, 'host_ip');
+                                        console.log(reader.trim());
+                                        var host_ip = reader.trim();
+                                        webModel.WebApplicationModel.host_ip = host_ip;
+                                        self.logger.info(host_ip);
+
+                                        if (webModel.WebApplicationModel.AppType = 'WebApplication')
+                                            console.log(JSON.stringify(webModel, null, 4));
+                                            webAnsible.webgenerateAnsible(JSON.stringify(webModel, null, 4));
+                                        //var host_ip = self.core.getAttribute(dstNode, 'host_ip');
+                                        console.log(reader.trim());
+                                        // var host_ip = reader.trim();
+                                        dbModel.DBApplicationModel.host_ip = host_ip;
+                                        self.logger.info(host_ip);
+
+                                        if (dbModel.DBApplicationModel.AppType = 'DBApplication')
+                                            console.log(JSON.stringify(dbModel, null, 4));
+                                            dbAnsible.dbgenerateAnsible(JSON.stringify(dbModel, null, 4));
+
+                                    }
+                                });
                         }
                     }
                 }
@@ -188,6 +346,5 @@ define([
             })
             .nodeify(callback);
     };
-
     return ansibleVMspawn;
 });

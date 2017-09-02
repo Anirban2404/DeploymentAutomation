@@ -18,19 +18,41 @@ define([], function () {
             var ostype = readJSON['DBApplicationModel']['OS']['name'];
             var osversion = readJSON['DBApplicationModel']['OS']['version'];
 
-            console.log(AppType);
-            console.log(name);
-            console.log(srcPath);
-            console.log(user);
+            // console.log(AppType);
+            // console.log(name);
+            // console.log(srcPath);
+            // console.log(user);
+            //
+            // console.log(password);
+            // console.log(port);
+            //
+            // console.log(dbEngine);
+            //
+            // console.log(hostip);
+            // console.log(ostype);
+            // console.log(osversion);
 
-            console.log(password);
-            console.log(port);
+            // MySQL driver
+            var mysql = require('mysql');
+            var replace = require("replace");
+            var sleep = require('sleep');
+            sleep.sleep(5);
+            // var conn = mysql.createConnection({
+            //     host: "127.0.0.1",
+            //     user: "root",
+            //     password: "isislab"
+            // });
+            var dbpool;
 
-            console.log(dbEngine);
-
-            console.log(hostip);
-            console.log(ostype);
-            console.log(osversion);
+            dbpool = mysql.createPool({
+                connectionLimit: 10,
+                host: '127.0.0.1',
+                user: 'root',
+                password: 'isislab',
+                debug: false,
+                multipleStatements: true,
+                acquireTimeout: Number.POSITIVE_INFINITY
+            });
 
             // Create ansible file for DBServer
             var fs = require('fs');
@@ -39,7 +61,7 @@ define([], function () {
             var scriptdir = path.resolve(".");
             var mkdirp = require('mkdirp')
             scriptdir += "/examples/ansibleScript/";
-            scriptdir += "LAMPApplication";
+            scriptdir += "Application";
             scriptdir += Math.floor(Date.now());
             console.log(scriptdir);
             // if (fs.existsSync(scriptdir)) {
@@ -60,7 +82,7 @@ define([], function () {
 
             var hostContent = "[dbserver]\n";
             hostContent += hostip;
-            hostContent += " ansible_connection=ssh ansible_user=ubuntu\n";
+            hostContent += " ansible_connection=ssh ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python\n";
             //console.log (hostContent);
 
             if (fs.exists(hostfile)) {
@@ -157,21 +179,6 @@ define([], function () {
             //user
             fs.writeFileSync(mainTaskFile, "---\n");
 
-            // MySQL driver
-            var mysql = require('mysql');
-            var replace = require("replace");
-            var conn = mysql.createConnection({
-                // host: "127.0.0.1",
-                user: "root",
-                password: "isislab"
-            });
-
-            // Connect to Database
-            conn.connect(function (err) {
-                if (err) throw err;
-                console.log("Connected!");
-            });
-
 
             if (dbEngine.toLowerCase() == "mysql") {
                 var copyCode = "- include: copy_code.yml\n";
@@ -215,33 +222,35 @@ define([], function () {
                 var replace = require("replace");
 
                 // Query the DataBase
-                conn.query(sql, function (err, rows) {
+                dbpool.getConnection(function (err, connection) {
                     if (err) throw err;
-                    for (var row in rows) {
-                        var rowResult = "         - " + rows[row].pkg_name;
-                        console.log(rowResult);
-                        pkg_result += rowResult + "\n";
+                    else {
+                        connection.query(sql, function (err, rows) {
+                            connection.release();
+                            if (err) {
+                                console.error('error running query', err);
+                            } else {
+                                for (var row in rows) {
+                                    var rowResult = "         - " + rows[row].pkg_name;
+                                    console.log(rowResult);
+                                    pkg_result += rowResult + "\n";
+                                }
+                                if (pkg_result.length > 0) {
+                                    replace({
+                                        regex: "        <<packages>>",
+                                        replacement: pkg_result,
+                                        paths: [dbdeployFile],
+                                        recursive: true,
+                                        silent: true,
+                                    });
+                                    callback();
+                                }
+                            }
+                        });
+
                     }
-
-                    replace({
-                        regex: "        <<packages>>",
-                        replacement: pkg_result,
-                        paths: [dbdeployFile],
-                        recursive: true,
-                        silent: false,
-                    });
-
                 });
 
-                // End Database Connection
-                // conn.end(function (err) {
-                //     if (err) {
-                //         throw err;
-                //         console.log(err);
-                //     }
-                //     else
-                //         console.log("Disconnected!");
-                // });
                 console.log(ostype + osversion);
                 var mysqlTempFile = deploydir + "/templates/mysqlTemp";
 
@@ -270,8 +279,15 @@ define([], function () {
                         console.log('Role Directory ' + directory + ' created.');
                     }
                 });
+
                 //Read the header file
-                var cnfiniTempfile = deploydir + "/templates/my.cnf.j2Temp";
+                var cnfiniTempfile;
+                if ((ostype + osversion).toLowerCase() === "ubuntu16.04")
+                    cnfiniTempfile = deploydir + "/templates/my.cnf.j2Temp16";
+                else if ((ostype + osversion).toLowerCase() === "ubuntu14.04")
+                    cnfiniTempfile = deploydir + "/templates/my.cnf.j2Temp14";
+                console.log(mysqlTempFile);
+
                 var cnfiniTemp = fs.readFileSync(cnfiniTempfile, 'utf8');
                 // Creating Copy-code file
                 var cnfiniTempFile = roleTempDir + "/" + "my.cnf.j2";
@@ -331,15 +347,15 @@ define([], function () {
             fs.appendFileSync(dbdeployFile, roles);
 
             // End Database Connection
-            conn.end(function (err) {
-                if (err) {
-                    throw err;
-                    console.log(err);
-                }
-                else {
-                    console.log("Disconnected!");
-                }
-            });
+            // conn.end(function (err) {
+            //     if (err) {
+            //         throw err;
+            //         console.log(err);
+            //     }
+            //     else {
+            //         console.log("Disconnected!");
+            //     }
+            // });
 
             var cp = require('shelljs');
             var command = "ansible-playbook " + deployFile;
@@ -348,19 +364,29 @@ define([], function () {
 
 
             var sleep = require('sleep');
-            require('file-size-watcher').watch(hostfile).on('sizeChange',
-                function callback(newSize, oldSize) {
-                    console.log('The file size changed from ' + oldSize + ' to ' + newSize);
-                    if (newSize > oldSize) {
-                        //sleep.sleep(10);
-                        var shell = require('shelljs');
-                        shell.cd(scriptdir);
-                        var command = "ansible-playbook " + deployFile;
-                        var exec = shell.exec;
-                        console.log(command);
-                        exec(command);
+
+            function callback() {
+                sleep.sleep(1);
+                var shell = require('shelljs');
+                shell.cd(scriptdir);
+                var command = "ansible-playbook " + deployFile;
+                var exec = shell.exec;
+                console.log(command);
+                //exec(command);
+                var sshCmd = "ssh ubuntu@" + hostip + " echo 'hello'";
+                console.log(sshCmd);
+                dbpool.end();
+                while (true) {
+                    var hello = shell.exec(sshCmd).stdout;
+                    // console.log(hello);
+                    sleep.sleep(30);
+                    if (hello === 'hello\n') {
+                        console.log("hello");
+                        // exec(command);
+                        break;
                     }
-                });
+                }
+            }
         }
     }
 });

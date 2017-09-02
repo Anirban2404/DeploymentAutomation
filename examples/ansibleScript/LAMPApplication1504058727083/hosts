@@ -1,2 +1,0 @@
-[dbserver]
-129.59.234.237 ansible_connection=ssh ansible_user=ubuntu

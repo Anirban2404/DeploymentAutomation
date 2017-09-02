@@ -15,15 +15,43 @@ define([], function () {
             var ostype = readJSON['WebApplicationModel']['OS']['name'];
             var osversion = readJSON['WebApplicationModel']['OS']['version'];
 
-            console.log(AppType);
-            console.log(name);
-            console.log(srcPath);
-            console.log(language);
-            console.log(webEngine);
-
+            // console.log(AppType);
+            // console.log(name);
+            // console.log(srcPath);
+            // console.log(language);
+            // console.log(webEngine);
+            //
             console.log(hostip);
-            console.log(ostype);
-            console.log(osversion);
+            // console.log(ostype);
+            // console.log(osversion);
+
+
+            // MySQL driver
+            var mysql = require('mysql');
+            var replace = require("replace");
+            // var conn = mysql.createConnection({
+            //     host: "127.0.0.1",
+            //     user: "root",
+            //     password: "isislab"
+            // });
+            var pool;
+
+            pool = mysql.createPool({
+                connectionLimit: 10,
+                // host          : 'localhost',
+                user: 'root',
+                password: 'isislab',
+                debug: false,
+                multipleStatements: true,
+                acquireTimeout: Number.POSITIVE_INFINITY
+            });
+
+
+            // Connect to Database
+            // conn.connect(function (err) {
+            //     if (err) throw err;
+            //     console.log("Connected!");
+            // });
 
             // Create ansible file for WebServer
             var fs = require('fs');
@@ -32,9 +60,9 @@ define([], function () {
             var scriptdir = path.resolve(".");
             var mkdirp = require('mkdirp')
             scriptdir += "/examples/ansibleScript/";
-            scriptdir += "LAMPApplication";
+            scriptdir += "Application";
             scriptdir += Math.floor(Date.now());
-            console.log(scriptdir);
+            // console.log(scriptdir);
             // if (fs.existsSync(scriptdir)) {
             //     console.log("Deleting: ", scriptdir);
             //     deleteDirectory(scriptdir);
@@ -79,7 +107,7 @@ define([], function () {
 
             var deploydir = path.resolve(".");
             var deployFile = scriptdir + '/' + 'site.yml';
-            console.log(deployFile);
+            // console.log(deployFile);
             if (fs.exists(deployFile)) {
                 //console.log('deploydir: ' + deploydir);
                 var siteTempfile = deploydir + "/templates/siteTemp";
@@ -89,6 +117,16 @@ define([], function () {
 
                 fs.writeFileSync(deployFile, siteTemp);
             }
+
+            var chnghostip = "ubuntu@" + hostip;
+            var replace = require("replace");
+            replace({
+                regex: "ubuntu@<<ip>>",
+                replacement: chnghostip,
+                paths: [deployFile],
+                recursive: true,
+                silent: false,
+            });
 
             var invars = "\n\n- include: webapp.yml";
 
@@ -101,7 +139,7 @@ define([], function () {
             fs.writeFileSync(webdeployFile, LAMPwebsiteTemp);
             var vars = "\n\n  vars:\n";
             vars += "    - path: " + srcPath;
-            console.log(vars);
+            // console.log(vars);
             fs.appendFileSync(webdeployFile, vars);
 
             // Creating roles directory
@@ -148,27 +186,12 @@ define([], function () {
             //language
             fs.writeFileSync(mainTaskFile, "---\n");
 
-            // MySQL driver
-            var mysql = require('mysql');
-            var replace = require("replace");
-            var conn = mysql.createConnection({
-                // host: "127.0.0.1",
-                user: "root",
-                password: "isislab"
-            });
-
-            // Connect to Database
-            conn.connect(function (err) {
-                if (err) throw err;
-                console.log("Connected!");
-            });
-
 
             if (language.toLowerCase() == "php") {
-                var sql = "SELECT b.pkg_name FROM softwaredependency.packages b ,softwaredependency.swdependency a where b.app_id=a.id and a.AppType='" + language.toLowerCase() + "'";
-                sql += "and b.sw_id in (select app_sw_id FROM softwaredependency.os_dependency where os_id in (SELECT id FROM softwaredependency.os_pkg_mgr ";
-                sql += "where concat(OS_type,OS_version) = '" + ostype + osversion + "'))";
-                console.log(sql);
+                var php_sql = "SELECT b.pkg_name FROM softwaredependency.packages b ,softwaredependency.swdependency a where b.app_id=a.id and a.AppType='" + language.toLowerCase() + "'";
+                php_sql += "and b.sw_id in (select app_sw_id FROM softwaredependency.os_dependency where os_id in (SELECT id FROM softwaredependency.os_pkg_mgr ";
+                php_sql += "where concat(OS_type,OS_version) = '" + ostype + osversion + "'))";
+                console.log(php_sql);
                 var install_language = "- include: install_" + language.toLowerCase() + ".yml\n";
 
                 fs.appendFileSync(mainTaskFile, install_language);
@@ -182,23 +205,56 @@ define([], function () {
                 var replace = require("replace");
 
                 // Query the DataBase
-                conn.query(sql, function (err, rows) {
+                pool.getConnection(function (err, connection) {
                     if (err) throw err;
-                    for (var row in rows) {
-                        var rowResult = "         - " + rows[row].pkg_name;
-                        console.log(rowResult);
-                        pkg_result += rowResult + "\n";
+                    else {
+                        connection.query(php_sql, function (err, rows) {
+                            connection.release();
+
+                            if (err) {
+                                console.error('error running query', err);
+                            } else {
+                                for (var row in rows) {
+                                    var rowResult = "         - " + rows[row].pkg_name;
+                                    console.log(rowResult);
+                                    pkg_result += rowResult + "\n";
+                                }
+                                if (pkg_result.length > 0) {
+                                    replace({
+                                        regex: "        <<packages>>",
+                                        replacement: pkg_result,
+                                        paths: [webdeployFile],
+                                        recursive: true,
+                                        silent: true,
+                                    });
+                                    if (webEngine.length === 0)
+                                        callback();
+                                    else
+                                        webEngineCallback();
+                                }
+                            }
+                        });
+
                     }
-
-                    replace({
-                        regex: "        <<packages>>",
-                        replacement: pkg_result,
-                        paths: [webdeployFile],
-                        recursive: true,
-                        silent: false,
-                    });
-
                 });
+
+                // conn.query(sql, function (err, rows) {
+                //     if (err) throw err;
+                //     for (var row in rows) {
+                //         var rowResult = "         - " + rows[row].pkg_name;
+                //         console.log(rowResult);
+                //         pkg_result += rowResult + "\n";
+                //     }
+                //
+                //     replace({
+                //         regex: "        <<packages>>",
+                //         replacement: pkg_result,
+                //         paths: [webdeployFile],
+                //         recursive: true,
+                //         silent: false,
+                //     });
+                //
+                // });
 
                 // End Database Connection
                 // conn.end(function (err) {
@@ -287,111 +343,206 @@ define([], function () {
 
             }
 
-            if (webEngine == "ApacheHTTPServer") {
-                var webengine = "apache";
-                var install_webengine = "- include: install_" + webengine + ".yml";
-                fs.appendFileSync(mainTaskFile, install_webengine);
 
-                var en_sql = "SELECT b.pkg_name FROM softwaredependency.packages b ,softwaredependency.swdependency a where b.app_id=a.id and a.AppType='" + webengine + "'";
-                en_sql += "and b.sw_id in (select app_sw_id FROM softwaredependency.os_dependency where os_id in (SELECT id FROM softwaredependency.os_pkg_mgr ";
-                en_sql += "where concat(OS_type,OS_version) = '" + ostype + osversion + "'))";
-                console.log(en_sql);
-                var install_webengine = "- include: install_" + webengine + ".yml";
-                //Read the header file
-                var apacheTempfile = deploydir + "/templates/apache2";
-                var apacheTemp = fs.readFileSync(apacheTempfile, 'utf8');
-                // Creating Copy-code file
-                var apacheTaskFile = roleTaskDir + "/" + "install_" + webengine + ".yml";
-                console.log(copyTaskFile);
-                fs.writeFile(apacheTaskFile, apacheTemp, function (err) {
-                    if (err) {
-                        return console.log(err);
-                    }
+            if (language.toLowerCase() == "nodejs") {
+                var node_sql = "SELECT b.pkg_name FROM softwaredependency.packages b ,softwaredependency.swdependency a where b.app_id=a.id and a.AppType='" + language.toLowerCase() + "'";
+                node_sql += "and b.sw_id in (select app_sw_id FROM softwaredependency.os_dependency where os_id in (SELECT id FROM softwaredependency.os_pkg_mgr ";
+                node_sql += "where concat(OS_type,OS_version) = '" + ostype + osversion + "'))";
+                console.log(node_sql);
+                var install_language = "- include: install_" + language.toLowerCase() + ".yml";
+                fs.appendFileSync(mainTaskFile, install_language);
 
-                    console.log("The apache file was generated!");
-                });
-                var pkg_result = "";
+                console.log(install_language);
+
+
+                var ubuntu_pkg_vars = "\n\n      ubuntu_" + language.toLowerCase() + "_pkgs:\n";
+                ubuntu_pkg_vars += "        <<package>>"
+                fs.appendFileSync(webdeployFile, ubuntu_pkg_vars);
+                console.log(webdeployFile);
+
+                var pkg_rslt = "";
                 var replace = require("replace");
 
-                var en_result = "";
-                // Query the DataBase
-                conn.query(en_sql, function (err, rows) {
+
+                // conn.query(node_sql, function (err, rows) {
+                //     if (err) throw err;
+                //
+                //     for (var nrow in rows) {
+                //         var rowResult = "         - " + rows[nrow].pkg_name;
+                //         console.log(rowResult);
+                //         pkg_rslt += rowResult +"\n";
+                //     }
+                //     var sleep = require('sleep');
+                //     sleep.sleep(1);
+                //     if (pkg_rslt.length > 0){
+                //         replace({
+                //             regex: "        <<package>>",
+                //             replacement: pkg_rslt,
+                //             paths: [webdeployFile],
+                //             recursive: true,
+                //             silent: true,
+                //         });
+                //     }
+                // });
+
+                pool.getConnection(function (err, connection) {
                     if (err) throw err;
-                    for (var row in rows) {
-                        var rowResult = rows[row].pkg_name;
-                        console.log(rowResult);
-                        en_result += rowResult + "\n";
+                    else {
+                        connection.query(node_sql, function (err, rows) {
+                            connection.release();
+                            if (err) {
+                                console.error('error running query', err);
+                            } else {
+                                for (var nrow in rows) {
+                                    var rowResult = "         - " + rows[nrow].pkg_name;
+                                    console.log(rowResult);
+                                    pkg_rslt += rowResult + "\n";
+                                }
+                                if (pkg_rslt.length > 0) {
+                                    replace({
+                                        regex: "        <<package>>",
+                                        replacement: pkg_rslt,
+                                        paths: [webdeployFile],
+                                        recursive: true,
+                                        silent: true,
+                                    });
+                                    callback();
+                                }
+                            }
+                        });
+
                     }
-
-                    replace({
-                        regex: "<<apache>>",
-                        replacement: en_result,
-                        paths: [apacheTaskFile],
-                        recursive: true,
-                        silent: true,
-                    });
-
                 });
 
-                // Creating Handler files
-                var roleHandlerDir = roleAppDir + "/" + "handlers";
-                fs.ensureDirSync(roleHandlerDir, function (err) {
-                    if (err) {
-                        console.log(err);
-                    } else {
-                        console.log('Handler Directory ' + directory + ' created.');
-                    }
-                });
 
+                //conn.end();
+
+                var nodeTempfile = deploydir + "/templates/nodeTemplate";
+                console.log(nodeTempfile);
                 //Read the header file
-                var apacheHandlerfile = deploydir + "/templates/apacheHandler";
-                var apacheHandler = fs.readFileSync(apacheHandlerfile, 'utf8');
-                // Creating Copy-code file
-                var apacheHandlerFile = roleHandlerDir + "/" + "main.yml";
-                console.log(apacheHandlerFile);
-                fs.writeFile(apacheHandlerFile, apacheHandler, function (err) {
+                var nodeTemp = fs.readFileSync(nodeTempfile, 'utf8');
+
+                // Creating Task file
+                var nodeTaskFile = roleTaskDir + "/" + "install_" + language.toLowerCase() + ".yml";
+                console.log(nodeTaskFile);
+                fs.writeFile(nodeTaskFile, nodeTemp, function (err) {
                     if (err) {
                         return console.log(err);
                     }
 
-                    console.log("The apacheHandler file was generated!");
+                    console.log("The node file was generated!");
                 });
+            }
 
-                var hndlr_result = "";
-                // Query the DataBase
-                conn.query(en_sql, function (err, rows) {
-                    if (err) throw err;
-                    for (var row in rows) {
-                        var rowResult = rows[row].pkg_name;
-                        console.log(rowResult);
-                        hndlr_result += rowResult + " ";
-                    }
+            function webEngineCallback() {
+                if (webEngine == "ApacheHTTPServer") {
+                    var webengine = "apache";
+                    var install_webengine = "- include: install_" + webengine + ".yml";
+                    fs.appendFileSync(mainTaskFile, install_webengine);
 
-                    replace({
-                        regex: "<<apache>>",
-                        replacement: hndlr_result,
-                        paths: [apacheHandlerFile],
-                        recursive: true,
-                        silent: true,
+                    var en_sql = "SELECT b.pkg_name FROM softwaredependency.packages b ,softwaredependency.swdependency a where b.app_id=a.id and a.AppType='" + webengine + "'";
+                    en_sql += "and b.sw_id in (select app_sw_id FROM softwaredependency.os_dependency where os_id in (SELECT id FROM softwaredependency.os_pkg_mgr ";
+                    en_sql += "where concat(OS_type,OS_version) = '" + ostype + osversion + "'))";
+                    console.log(en_sql);
+                    var install_webengine = "- include: install_" + webengine + ".yml";
+                    //Read the header file
+                    var apacheTempfile = deploydir + "/templates/apache2";
+                    var apacheTemp = fs.readFileSync(apacheTempfile, 'utf8');
+                    // Creating Copy-code file
+                    var apacheTaskFile = roleTaskDir + "/" + "install_" + webengine + ".yml";
+                    //console.log(copyTaskFile);
+                    fs.writeFile(apacheTaskFile, apacheTemp, function (err) {
+                        if (err) {
+                            return console.log(err);
+                        }
+
+                        console.log("The apache file was generated!");
                     });
 
-                });
 
+                    // Creating Handler files
+                    var roleHandlerDir = roleAppDir + "/" + "handlers";
+                    fs.ensureDirSync(roleHandlerDir, function (err) {
+                        if (err) {
+                            console.log(err);
+                        } else {
+                            console.log('Handler Directory ' + directory + ' created.');
+                        }
+                    });
+
+                    //Read the header file
+                    var apacheHandlerfile = deploydir + "/templates/apacheHandler";
+                    var apacheHandler = fs.readFileSync(apacheHandlerfile, 'utf8');
+                    // Creating Copy-code file
+                    var apacheHandlerFile = roleHandlerDir + "/" + "main.yml";
+                    console.log(apacheHandlerFile);
+                    fs.writeFile(apacheHandlerFile, apacheHandler, function (err) {
+                        if (err) {
+                            return console.log(err);
+                        }
+
+                        console.log("The apacheHandler file was generated!");
+                    });
+
+
+                    var replace = require("replace");
+                    // var hndlr_result = "";
+                    var en_result = "";
+                    var hndlr_result = "";
+                    // Query the DataBase
+                    pool.getConnection(function (err, connection) {
+                        if (err) throw err;
+                        else {
+                            connection.query(en_sql, function (err, rows) {
+                                connection.release();
+                                if (err) {
+                                    console.error('error running query', err);
+                                } else {
+                                    for (var row in rows) {
+                                        var rowResult = rows[row].pkg_name;
+                                        console.log(rowResult);
+                                        en_result += rowResult + "\n";
+                                        hndlr_result += rowResult;
+                                    }
+                                    if (en_result.length > 0) {
+                                        replace({
+                                            regex: "<<apache>>",
+                                            replacement: en_result,
+                                            paths: [apacheTaskFile],
+                                            recursive: true,
+                                            silent: true,
+                                        });
+                                        replace({
+                                            regex: "<<apache>>",
+                                            replacement: hndlr_result,
+                                            paths: [apacheHandlerFile],
+                                            recursive: true,
+                                            silent: true,
+                                        });
+                                        callback();
+                                    }
+                                }
+                            });
+
+                        }
+                    });
+                }
             }
+
             var roles = "\n\n  roles:\n";
             roles += "    - " + name;
             fs.appendFileSync(webdeployFile, roles);
 
-            // End Database Connection
-            conn.end(function (err) {
-                if (err) {
-                    throw err;
-                    console.log(err);
-                }
-                else {
-                    console.log("Disconnected!");
-                }
-            });
+            // // End Database Connection
+            // conn.end(function (err) {
+            //     if (err) {
+            //         throw err;
+            //         console.log(err);
+            //     }
+            //     else {
+            //         console.log("Disconnected!");
+            //     }
+            // });
 
             var cp = require('shelljs');
             var command = "ansible-playbook " + deployFile;
@@ -400,19 +551,29 @@ define([], function () {
 
 
             var sleep = require('sleep');
-            require('file-size-watcher').watch(hostfile).on('sizeChange',
-                function callback(newSize, oldSize) {
-                    console.log('The file size changed from ' + oldSize + ' to ' + newSize);
-                    if (newSize > oldSize) {
-                        //sleep.sleep(10);
-                        var shell = require('shelljs');
-                        shell.cd(scriptdir);
-                        var command = "ansible-playbook " + deployFile;
-                        var exec = shell.exec;
-                        console.log(command);
-                        exec(command);
+
+            function callback() {
+                sleep.sleep(1);
+                var shell = require('shelljs');
+                shell.cd(scriptdir);
+                var command = "ansible-playbook " + deployFile;
+                var exec = shell.exec;
+                console.log(command);
+                //exec(command);
+                var sshCmd = "ssh ubuntu@" + hostip + " echo 'hello'";
+                console.log(sshCmd);
+                pool.end();
+                while (true) {
+                    var hello = shell.exec(sshCmd).stdout;
+                    // console.log(hello);
+                    sleep.sleep(30);
+                    if (hello === 'hello\n') {
+                        console.log("hello");
+                        // exec(command);
+                        break;
                     }
-                });
+                }
+            }
         }
     }
 });

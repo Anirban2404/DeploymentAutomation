@@ -27,13 +27,15 @@ define([], function() {
 
             var shell = require('shelljs');
             var sleep = require('sleep');
+
             var command = "ansible-playbook ";
+
             command += "src/plugins/ansibleVMspawn/openstackVMspawn.yml ";
             command += "--extra-vars ";
             command += '" ' + variables + ' "';
             console.log(command);
-
-            var openstack_ip = "openstack server list --name " + vmName + "| awk '{print $8}'| awk -F'=' '{print $2}'"
+            var fs = require('fs');
+            var openstack_ip = "openstack server list --name " + vmName + "| awk '{print $8}'| awk -F'=' '{print $2}' > src/plugins/ansibleVMspawn/hostTemp"+vmName;
             console.log(openstack_ip);
             var promise =
                 shell.exec(command, {async: true});
@@ -41,6 +43,7 @@ define([], function() {
             promise.stdout.on('data', function (data) {
                 shell.exec(openstack_ip).stdout;
             });
+
         }
     }
 });
