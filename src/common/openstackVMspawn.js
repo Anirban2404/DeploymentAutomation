@@ -23,7 +23,7 @@ define([], function() {
             console.log(image);
 
             var variables = "VM_Name=" + vmName + " Image_Name=" + image + " Flavor_Name=" + flavor_name + " Host_Name=" + "nova:" + hostname + " Network_Name=" + network;
-            console.log(variables);
+            // console.log(variables);
 
             var shell = require('shelljs');
             var sleep = require('sleep');
@@ -33,10 +33,11 @@ define([], function() {
             command += "src/plugins/ansibleVMspawn/openstackVMspawn.yml ";
             command += "--extra-vars ";
             command += '" ' + variables + ' "';
-            console.log(command);
+            command += " &"
+            // console.log(command);
             var fs = require('fs');
             var openstack_ip = "openstack server list --name " + vmName + "| awk '{print $8}'| awk -F'=' '{print $2}' > src/plugins/ansibleVMspawn/hostTemp"+vmName;
-            console.log(openstack_ip);
+            // console.log(openstack_ip);
             var promise =
                 shell.exec(command, {async: true});
             sleep.sleep(1);

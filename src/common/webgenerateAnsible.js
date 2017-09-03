@@ -238,33 +238,7 @@ define([], function () {
                     }
                 });
 
-                // conn.query(sql, function (err, rows) {
-                //     if (err) throw err;
-                //     for (var row in rows) {
-                //         var rowResult = "         - " + rows[row].pkg_name;
-                //         console.log(rowResult);
-                //         pkg_result += rowResult + "\n";
-                //     }
-                //
-                //     replace({
-                //         regex: "        <<packages>>",
-                //         replacement: pkg_result,
-                //         paths: [webdeployFile],
-                //         recursive: true,
-                //         silent: false,
-                //     });
-                //
-                // });
 
-                // End Database Connection
-                // conn.end(function (err) {
-                //     if (err) {
-                //         throw err;
-                //         console.log(err);
-                //     }
-                //     else
-                //         console.log("Disconnected!");
-                // });
                 console.log(ostype + osversion);
                 var mysqlTempFile;
                 if ((ostype + osversion).toLowerCase() === "ubuntu16.04")
@@ -364,26 +338,6 @@ define([], function () {
                 var replace = require("replace");
 
 
-                // conn.query(node_sql, function (err, rows) {
-                //     if (err) throw err;
-                //
-                //     for (var nrow in rows) {
-                //         var rowResult = "         - " + rows[nrow].pkg_name;
-                //         console.log(rowResult);
-                //         pkg_rslt += rowResult +"\n";
-                //     }
-                //     var sleep = require('sleep');
-                //     sleep.sleep(1);
-                //     if (pkg_rslt.length > 0){
-                //         replace({
-                //             regex: "        <<package>>",
-                //             replacement: pkg_rslt,
-                //             paths: [webdeployFile],
-                //             recursive: true,
-                //             silent: true,
-                //         });
-                //     }
-                // });
 
                 pool.getConnection(function (err, connection) {
                     if (err) throw err;
@@ -533,16 +487,7 @@ define([], function () {
             roles += "    - " + name;
             fs.appendFileSync(webdeployFile, roles);
 
-            // // End Database Connection
-            // conn.end(function (err) {
-            //     if (err) {
-            //         throw err;
-            //         console.log(err);
-            //     }
-            //     else {
-            //         console.log("Disconnected!");
-            //     }
-            // });
+
 
             var cp = require('shelljs');
             var command = "ansible-playbook " + deployFile;
@@ -569,7 +514,7 @@ define([], function () {
                     sleep.sleep(30);
                     if (hello === 'hello\n') {
                         console.log("hello");
-                        // exec(command);
+                        exec(command);
                         break;
                     }
                 }

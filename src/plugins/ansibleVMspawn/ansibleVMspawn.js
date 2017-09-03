@@ -166,7 +166,8 @@ define([
                     self.pathToNode[self.core.getPath(nodes[i])] = nodes[i];
                     //self.logger.info(self.core.getAttribute(nodes[i], 'name'));
                 }
-
+                var HashMap = require('hashmap');
+                var map = new HashMap();
                 var dstNodes = [];
                 var srcNodes = [];
                 var childrenPaths = self.core.getChildrenPaths(self.activeNode);
@@ -176,23 +177,28 @@ define([
                     var childNode = self.pathToNode[childrenPaths[i]];
                     if (self.isMetaTypeOf(childNode, self.META['HostedOn']) === true) {
                         var childName = self.core.getAttribute(childNode, 'name');
-                        self.logger.info('At childNode', childName);
+                        // self.logger.info('At childNode', childName);
                         var src_Path = self.core.getPointerPath(childNode, 'src');
                         var dst_Path = self.core.getPointerPath(childNode, 'dst');
 
                         if (src_Path && dst_Path) {
                             var srcNode = self.pathToNode[src_Path];
                             var dstNode = self.pathToNode[dst_Path];
-                            self.logger.info(self.core.getAttribute(childNode, 'name'));
-                            self.logger.info('connects');
-                            self.logger.info(self.core.getAttribute(srcNode, 'name'));
-                            self.logger.info('-->');
-                            self.logger.info(self.core.getAttribute(dstNode, 'name'));
+
+                            // self.logger.info(self.core.getAttribute(childNode, 'name'));
+                            // self.logger.info('connects');
+                            // self.logger.info(self.core.getAttribute(srcNode, 'name'));
+                            // self.logger.info('-->');
+                            // self.logger.info(self.core.getAttribute(dstNode, 'name'));
+                            map.set((self.core.getAttribute(dstNode, 'name')), (self.core.getAttribute(srcNode, 'name')));
                         }
 
+                        map.forEach(function (value, key) {
+                            console.log(key.toString() + " : " + value.toString());
+                        });
 
                         var src_node = self.core.getAttribute(srcNode, 'name');
-                        self.logger.info('At srcNode', src_node);
+                        // self.logger.info('At srcNode', src_node);
 
                         if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true)
                             srcNodes.push('WebApplication');
@@ -200,21 +206,21 @@ define([
                             srcNodes.push('DBApplication');
 
                         var dst_node = self.core.getAttribute(dstNode, 'name');
-                        self.logger.info('At dstNode', dst_node);
+                        // self.logger.info('At dstNode', dst_node);
                         if (self.isMetaTypeOf(dstNode, self.META['OpenStack']) === true) {
                             var flavor_name = self.core.getAttribute(dstNode, 'flavor_name');
                             dataModel.ansibleModel.flavor_name = flavor_name;
-                            self.logger.info(flavor_name);
+                            // self.logger.info(flavor_name);
                             var hostname = self.core.getAttribute(dstNode, 'hostname');
                             dataModel.ansibleModel.hostname = hostname;
-                            self.logger.info(hostname);
+                            // self.logger.info(hostname);
 
                             var vmName = self.core.getAttribute(dstNode, 'name');
                             dataModel.ansibleModel.VMName = vmName;
-                            self.logger.info(vmName);
+                            // self.logger.info(vmName);
                             var network = self.core.getAttribute(dstNode, 'network');
                             dataModel.ansibleModel.network = network;
-                            self.logger.info(network);
+                            // self.logger.info(network);
 
                             var acq_path = self.core.getChildrenPaths(dstNode);
                             for (var j = 0; j < acq_path.length; j += 1) {
@@ -223,12 +229,12 @@ define([
                                 dataModel.ansibleModel.OS.name = os_name;
                                 webModel.WebApplicationModel.OS.name = os_name;
                                 dbModel.DBApplicationModel.OS.name = os_name;
-                                self.logger.info(os_name);
+                                // self.logger.info(os_name);
                                 var os_version = self.core.getAttribute(acq_node, 'version');
                                 dataModel.ansibleModel.OS.version = os_version;
                                 webModel.WebApplicationModel.OS.version = os_version;
                                 dbModel.DBApplicationModel.OS.version = os_version;
-                                self.logger.info(os_version);
+                                // self.logger.info(os_version);
                             }
 
                             if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true) {
@@ -237,13 +243,13 @@ define([
                                 webModel.WebApplicationModel.AppType = 'WebApplication';
                                 var language = self.core.getAttribute(srcNode, 'language');
                                 webModel.WebApplicationModel.language = language;
-                                self.logger.info(language);
+                                // self.logger.info(language);
                                 var appName = self.core.getAttribute(srcNode, 'name');
                                 webModel.WebApplicationModel.AppName = appName;
-                                self.logger.info(appName);
+                                // self.logger.info(appName);
                                 var srcPath = self.core.getAttribute(srcNode, 'src');
                                 webModel.WebApplicationModel.srcPath = srcPath;
-                                self.logger.info(srcPath);
+                                // self.logger.info(srcPath);
 
 
                                 var acq_path = self.core.getChildrenPaths(srcNode);
@@ -251,7 +257,7 @@ define([
                                     acq_node = self.pathToNode[acq_path[j]];
                                     var webEngine = self.core.getAttribute(acq_node, 'name');
                                     webModel.WebApplicationModel.WebEngine = webEngine;
-                                    self.logger.info(webEngine);
+                                    // self.logger.info(webEngine);
 
                                 }
 
@@ -263,19 +269,19 @@ define([
                                 dbModel.DBApplicationModel.AppType = 'DBApplication';
                                 var user = self.core.getAttribute(nodes[i], 'user');
                                 dbModel.DBApplicationModel.user = user;
-                                self.logger.info(user);
+                                // self.logger.info(user);
                                 var password = self.core.getAttribute(srcNode, 'password');
                                 dbModel.DBApplicationModel.password = password;
-                                self.logger.info(password);
+                                // self.logger.info(password);
                                 var appName = self.core.getAttribute(srcNode, 'name');
                                 dbModel.DBApplicationModel.AppName = appName;
-                                self.logger.info(appName);
+                                // self.logger.info(appName);
                                 var srcPath = self.core.getAttribute(srcNode, 'src');
                                 dbModel.DBApplicationModel.srcPath = srcPath;
-                                self.logger.info(srcPath);
+                                // self.logger.info(srcPath);
                                 var port = self.core.getAttribute(srcNode, 'port');
                                 dbModel.DBApplicationModel.port = port;
-                                self.logger.info(port);
+                                // self.logger.info(port);
 
 
                                 var acq_path = self.core.getChildrenPaths(srcNode);
@@ -283,19 +289,20 @@ define([
                                     acq_node = self.pathToNode[acq_path[j]];
                                     var dbEngine = self.core.getAttribute(acq_node, 'name');
                                     dbModel.DBApplicationModel.dbEngine = dbEngine;
-                                    self.logger.info(dbEngine);
+                                    // self.logger.info(dbEngine);
                                 }
 
                             }
 
                             var fs = require('fs');
-                            var hostTempfile = "src/plugins/ansibleVMspawn/hostTemp" + vmName;
+                            var sleep = require('sleep');
+                            // var hostTempfile = "src/plugins/ansibleVMspawn/hostTemp" + vmName;
 
-
-                            console.log(dstNodes.indexOf(vmName));
+                            // console.log(dstNodes.indexOf(vmName));
 
                             if (dstNodes.indexOf(dst_node) === -1) {
                                 openstackVMspawn.spawnVM(JSON.stringify(dataModel, null, 4));
+                                sleep.sleep(10);
                                 // console.log(JSON.stringify(dataModel, null, 4));
                                 // console.log(vmName);
                                 dstNodes.push(vmName);
@@ -305,40 +312,71 @@ define([
                             }
 
                             console.log(dstNodes);
-                            var visited = false;
-                            var sleep = require('sleep');
+                            var w_visited = false;
+                            var d_visited = false;
                             console.log(srcNodes);
-                            require('file-size-watcher').watch(hostTempfile).on('sizeChange',
-                                function callback(newSize, oldSize) {
-                                    console.log('The file size changed from ' + oldSize + ' to ' + newSize);
 
-                                    if (newSize > oldSize + 10 && visited === false) {
-                                        visited = true;
-                                        sleep.sleep(1);
-                                        var src_node = self.core.getAttribute(srcNode, 'name');
-                                        self.logger.info('At srcNode', src_node);
-                                        var reader = fs.readFileSync(hostTempfile, 'utf8');
-                                        //var host_ip = self.core.getAttribute(dstNode, 'host_ip');
-                                        console.log(reader.trim());
-                                        var host_ip = reader.trim();
-                                        webModel.WebApplicationModel.host_ip = host_ip;
-                                        self.logger.info(host_ip);
+                            var sync = require('synchronize');
+                            for (var tnodes = 0; tnodes < dstNodes.length; tnodes++) {
+                                // sleep.sleep(5);
+                                var hostTempfile = "src/plugins/ansibleVMspawn/hostTemp" + dstNodes[tnodes];
+                                console.log(map.get(dstNodes[tnodes]), "--->", dstNodes[tnodes]);
+                                var connectedNode = map.get(dstNodes[tnodes]);
 
-                                        if (webModel.WebApplicationModel.AppType = 'WebApplication')
-                                            console.log(JSON.stringify(webModel, null, 4));
-                                            webAnsible.webgenerateAnsible(JSON.stringify(webModel, null, 4));
-                                        //var host_ip = self.core.getAttribute(dstNode, 'host_ip');
-                                        console.log(reader.trim());
-                                        // var host_ip = reader.trim();
-                                        dbModel.DBApplicationModel.host_ip = host_ip;
-                                        self.logger.info(host_ip);
-
-                                        if (dbModel.DBApplicationModel.AppType = 'DBApplication')
-                                            console.log(JSON.stringify(dbModel, null, 4));
-                                            dbAnsible.dbgenerateAnsible(JSON.stringify(dbModel, null, 4));
-
-                                    }
+                                sync.fiber(function () {
+                                    sync.await(populateModel(hostTempfile, connectedNode, sync.defer()));
                                 });
+                            }
+
+
+                            function populateModel(hostTempfile, connectedNode) {
+                                console.log("+++++", hostTempfile, "+++++");
+
+                                sleep.sleep(5);
+                                require('file-size-watcher').watch(hostTempfile).on('sizeChange',
+                                    function callback(newSize, oldSize) {
+                                        console.log('The file size changed from ' + oldSize + ' to ' + newSize);
+                                        console.log("========", hostTempfile, "===========");
+                                        if (newSize > oldSize + 10) {
+                                            // visited = true;
+
+                                            // var src_node = self.core.getAttribute(srcNode, 'name');
+                                            // // self.logger.info('At srcNode', src_node);
+
+                                            var reader = fs.readFileSync(hostTempfile, 'utf8').trim();
+
+
+                                            if ((webModel.WebApplicationModel.AppType === 'WebApplication')
+                                                && (webModel.WebApplicationModel.AppName.trim() === connectedNode) && w_visited === false) {
+                                                console.log(connectedNode, "%%%%%%%%", reader);
+                                                w_visited = true;
+                                                var host_ip = self.core.getAttribute(dstNode, 'host_ip');
+                                                // console.log(reader.trim());
+                                                webModel.WebApplicationModel.host_ip = reader;
+                                                // self.logger.info(host_ip);
+                                                console.log("+++++++++++++++src/plugins/ansibleVMspawn/hostTemp" + vmName);
+                                                console.log(JSON.stringify(webModel, null, 4));
+                                                webAnsible.webgenerateAnsible(JSON.stringify(webModel, null, 4));
+                                            }
+
+
+                                            if ((dbModel.DBApplicationModel.AppType === 'DBApplication')
+                                                && (dbModel.DBApplicationModel.AppName.trim() === connectedNode) && d_visited === false) {
+                                                console.log(connectedNode, "%%%%%%%%", reader);
+                                                d_visited = true;
+                                                var host_ip = self.core.getAttribute(dstNode, 'host_ip');
+                                                // console.log(reader.trim());
+                                                // var host_ip = reader.trim();
+                                                dbModel.DBApplicationModel.host_ip = reader;
+                                                // self.logger.info(host_ip);
+                                                console.log("+++++++++++++++src/plugins/ansibleVMspawn/hostTemp" + vmName);
+                                                console.log(JSON.stringify(dbModel, null, 4));
+                                                dbAnsible.dbgenerateAnsible(JSON.stringify(dbModel, null, 4));
+                                            }
+
+                                        }
+                                    });
+                            } // populateModel ends
                         }
                     }
                 }

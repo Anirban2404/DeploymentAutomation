@@ -382,7 +382,7 @@ define([], function () {
                     sleep.sleep(30);
                     if (hello === 'hello\n') {
                         console.log("hello");
-                        // exec(command);
+                        exec(command);
                         break;
                     }
                 }
