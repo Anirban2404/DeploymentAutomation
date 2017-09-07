@@ -11,3 +11,6 @@
   - name: install python2
     raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
 
+
+
+- include: dbapp.yml

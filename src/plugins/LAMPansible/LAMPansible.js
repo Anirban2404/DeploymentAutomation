@@ -100,6 +100,8 @@ define([
                     replication_count: "",
                     user: "",
                     dbEngine: "",
+                    dbnames: "",
+                    dbLocation: "",
                     OS: {
                         name: "",
                         version: ""
@@ -195,7 +197,8 @@ define([
                         }
                         if (self.isMetaTypeOf(srcNode, self.META['DBApplication']) === true && self.isMetaTypeOf(dstNode, self.META['Hardware']) === true) {
                             dbModel.DBApplicationModel.AppType = 'DBApplication';
-                            var user = self.core.getAttribute(nodes[i], 'user');
+
+                            var user = self.core.getAttribute(srcNode, 'user');
                             dbModel.DBApplicationModel.user = user;
                             self.logger.info(user);
                             var password = self.core.getAttribute(srcNode, 'password');
@@ -213,6 +216,11 @@ define([
                             var host_ip = self.core.getAttribute(dstNode, 'host_ip');
                             dbModel.DBApplicationModel.host_ip = host_ip;
                             self.logger.info(host_ip);
+                            var dbnames = self.core.getAttribute(srcNode, 'dbnames');
+                            dbModel.DBApplicationModel.dbnames = dbnames;
+                            // self.logger.info(dbnames);
+                            var dbLocation = self.core.getAttribute(srcNode, 'dbLocation');
+                            dbModel.DBApplicationModel.dbLocation = dbLocation;
 
                             var acq_path = self.core.getChildrenPaths(srcNode);
                             for (j = 0; j < acq_path.length; j += 1) {

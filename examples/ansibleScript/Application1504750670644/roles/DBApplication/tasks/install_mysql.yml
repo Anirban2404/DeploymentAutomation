@@ -52,3 +52,10 @@
 
 #- name: Create Application DB User
 #  mysql_user: name={{ mysql_user }} password={{ mysql_root_pass }} priv=*.*:ALL host='%' state=present
+- name: Create Application Database
+  mysql_db: name=moviedb state=import target=/var/www/html/mySqlDB/movieDB.sql
+
+- name: Create Application Database
+  mysql_db: name=bookstore state=import target=/var/www/html/mySqlDB/bookDB.sql
+- name: Create Application DB User
+  mysql_user: name={{ mysql_user }} password={{ mysql_root_pass }} priv=*.*:ALL host='%' state=present

@@ -149,6 +149,8 @@ define([
                     replication_count: "",
                     user: "",
                     dbEngine: "",
+                    dbnames: "",
+                    dbLocation: "",
                     OS: {
                         name: "",
                         version: ""
@@ -222,20 +224,7 @@ define([
                             dataModel.ansibleModel.network = network;
                             // self.logger.info(network);
 
-                            var acq_path = self.core.getChildrenPaths(dstNode);
-                            for (var j = 0; j < acq_path.length; j += 1) {
-                                var acq_node = self.pathToNode[acq_path[j]];
-                                var os_name = self.core.getAttribute(acq_node, 'name');
-                                dataModel.ansibleModel.OS.name = os_name;
-                                webModel.WebApplicationModel.OS.name = os_name;
-                                dbModel.DBApplicationModel.OS.name = os_name;
-                                // self.logger.info(os_name);
-                                var os_version = self.core.getAttribute(acq_node, 'version');
-                                dataModel.ansibleModel.OS.version = os_version;
-                                webModel.WebApplicationModel.OS.version = os_version;
-                                dbModel.DBApplicationModel.OS.version = os_version;
-                                // self.logger.info(os_version);
-                            }
+
 
                             if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true) {
                                 wvisited = true;
@@ -261,13 +250,26 @@ define([
 
                                 }
 
+                                var acq_path = self.core.getChildrenPaths(dstNode);
+                                for (var j = 0; j < acq_path.length; j += 1) {
+                                    var acq_node = self.pathToNode[acq_path[j]];
+                                    var os_name = self.core.getAttribute(acq_node, 'name');
+                                    dataModel.ansibleModel.OS.name = os_name;
+                                    webModel.WebApplicationModel.OS.name = os_name;
+                                    // self.logger.info(os_name);
+                                    var os_version = self.core.getAttribute(acq_node, 'version');
+                                    dataModel.ansibleModel.OS.version = os_version;
+                                    webModel.WebApplicationModel.OS.version = os_version;
+                                    // self.logger.info(os_version);
+                                }
+
                             }
 
                             if (self.isMetaTypeOf(srcNode, self.META['DBApplication']) === true) {
                                 wvisited = true;
 
                                 dbModel.DBApplicationModel.AppType = 'DBApplication';
-                                var user = self.core.getAttribute(nodes[i], 'user');
+                                var user = self.core.getAttribute(srcNode, 'user');
                                 dbModel.DBApplicationModel.user = user;
                                 // self.logger.info(user);
                                 var password = self.core.getAttribute(srcNode, 'password');
@@ -282,7 +284,12 @@ define([
                                 var port = self.core.getAttribute(srcNode, 'port');
                                 dbModel.DBApplicationModel.port = port;
                                 // self.logger.info(port);
-
+                                var dbnames = self.core.getAttribute(srcNode, 'dbnames');
+                                dbModel.DBApplicationModel.dbnames = dbnames;
+                                // self.logger.info(dbnames);
+                                var dbLocation = self.core.getAttribute(srcNode, 'dbLocation');
+                                dbModel.DBApplicationModel.dbLocation = dbLocation;
+                                // self.logger.info(dbLocation);
 
                                 var acq_path = self.core.getChildrenPaths(srcNode);
                                 for (j = 0; j < acq_path.length; j += 1) {
@@ -290,6 +297,18 @@ define([
                                     var dbEngine = self.core.getAttribute(acq_node, 'name');
                                     dbModel.DBApplicationModel.dbEngine = dbEngine;
                                     // self.logger.info(dbEngine);
+                                }
+                                var acq_path = self.core.getChildrenPaths(dstNode);
+                                for (var j = 0; j < acq_path.length; j += 1) {
+                                    var acq_node = self.pathToNode[acq_path[j]];
+                                    var os_name = self.core.getAttribute(acq_node, 'name');
+                                    dataModel.ansibleModel.OS.name = os_name;
+                                    dbModel.DBApplicationModel.OS.name = os_name;
+                                    // self.logger.info(os_name);
+                                    var os_version = self.core.getAttribute(acq_node, 'version');
+                                    dataModel.ansibleModel.OS.version = os_version;
+                                    dbModel.DBApplicationModel.OS.version = os_version;
+                                    // self.logger.info(os_version);
                                 }
 
                             }
@@ -356,6 +375,7 @@ define([
                                                 // self.logger.info(host_ip);
                                                 console.log("+++++++++++++++src/plugins/ansibleVMspawn/hostTemp" + vmName);
                                                 console.log(JSON.stringify(webModel, null, 4));
+                                                sleep.sleep(1);
                                                 webAnsible.webgenerateAnsible(JSON.stringify(webModel, null, 4));
                                             }
 
@@ -371,9 +391,9 @@ define([
                                                 // self.logger.info(host_ip);
                                                 console.log("+++++++++++++++src/plugins/ansibleVMspawn/hostTemp" + vmName);
                                                 console.log(JSON.stringify(dbModel, null, 4));
+                                                sleep.sleep(2);
                                                 dbAnsible.dbgenerateAnsible(JSON.stringify(dbModel, null, 4));
                                             }
-
                                         }
                                     });
                             } // populateModel ends

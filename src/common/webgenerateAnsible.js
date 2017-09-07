@@ -34,16 +34,18 @@ define([], function () {
             //     user: "root",
             //     password: "isislab"
             // });
-            var pool;
+            var webpool;
 
-            pool = mysql.createPool({
+            webpool = mysql.createPool({
                 connectionLimit: 10,
-                // host          : 'localhost',
+                host: '129.59.234.224',
                 user: 'root',
                 password: 'isislab',
+                port: 3306,
                 debug: false,
                 multipleStatements: true,
-                acquireTimeout: Number.POSITIVE_INFINITY
+                acquireTimeout: Number.POSITIVE_INFINITY,
+                queueLimit: 10
             });
 
 
@@ -203,41 +205,55 @@ define([], function () {
                 console.log(webdeployFile);
                 var pkg_result = "";
                 var replace = require("replace");
-
-                // Query the DataBase
-                pool.getConnection(function (err, connection) {
-                    if (err) throw err;
-                    else {
-                        connection.query(php_sql, function (err, rows) {
-                            connection.release();
-
-                            if (err) {
-                                console.error('error running query', err);
-                            } else {
-                                for (var row in rows) {
-                                    var rowResult = "         - " + rows[row].pkg_name;
-                                    console.log(rowResult);
-                                    pkg_result += rowResult + "\n";
-                                }
-                                if (pkg_result.length > 0) {
-                                    replace({
-                                        regex: "        <<packages>>",
-                                        replacement: pkg_result,
-                                        paths: [webdeployFile],
-                                        recursive: true,
-                                        silent: true,
-                                    });
-                                    if (webEngine.length === 0)
-                                        callback();
-                                    else
-                                        webEngineCallback();
-                                }
-                            }
-                        });
-
-                    }
+                var sleep = require('sleep');
+                webpool.on('acquire', function (connection) {
+                    console.log('Connection %d acquired', connection.threadId);
                 });
 
+                handleDisconnect();
+
+                function handleDisconnect() {
+                    // Query the DataBase
+                    webpool.getConnection(function (err, connection) {
+                        console.log("Webpool connecting...");
+                        sleep.sleep(1);
+                        if (err) {
+                            console.log(err);
+                            handleDisconnect();
+                        }
+                        else {
+                            connection.query(php_sql, function (err, rows) {
+                                connection.release();
+
+                                if (err) {
+                                    console.error('error running query', err);
+                                } else {
+                                    console.log("Webpool connected...");
+                                    console.log(rows);
+                                    for (var row in rows) {
+                                        var rowResult = "         - " + rows[row].pkg_name;
+                                        console.log(rowResult);
+                                        pkg_result += rowResult + "\n";
+                                    }
+                                    if (pkg_result.length > 0) {
+                                        replace({
+                                            regex: "        <<packages>>",
+                                            replacement: pkg_result,
+                                            paths: [webdeployFile],
+                                            recursive: true,
+                                            silent: true,
+                                        });
+                                        if (webEngine.length === 0)
+                                            callback();
+                                        else
+                                            webEngineCallback();
+                                    }
+                                }
+                            });
+
+                        }
+                    });
+                }
 
                 console.log(ostype + osversion);
                 var mysqlTempFile;
@@ -338,15 +354,18 @@ define([], function () {
                 var replace = require("replace");
 
 
-
-                pool.getConnection(function (err, connection) {
-                    if (err) throw err;
+                webpool.getConnection(function (err, connection) {
+                    console.log("Webpool connecting...");
+                    sleep.sleep(2);
+                    if (err)
+                        return console.log(err);
                     else {
                         connection.query(node_sql, function (err, rows) {
                             connection.release();
                             if (err) {
                                 console.error('error running query', err);
                             } else {
+                                console.log("Webpool connected...");
                                 for (var nrow in rows) {
                                     var rowResult = "         - " + rows[nrow].pkg_name;
                                     console.log(rowResult);
@@ -444,14 +463,17 @@ define([], function () {
                     var en_result = "";
                     var hndlr_result = "";
                     // Query the DataBase
-                    pool.getConnection(function (err, connection) {
-                        if (err) throw err;
+                    webpool.getConnection(function (err, connection) {
+                        console.log("Webpool connecting...");
+                        if (err)
+                            return console.log(err);
                         else {
                             connection.query(en_sql, function (err, rows) {
                                 connection.release();
                                 if (err) {
                                     console.error('error running query', err);
                                 } else {
+                                    console.log("Webpool connected...");
                                     for (var row in rows) {
                                         var rowResult = rows[row].pkg_name;
                                         console.log(rowResult);
@@ -488,7 +510,6 @@ define([], function () {
             fs.appendFileSync(webdeployFile, roles);
 
 
-
             var cp = require('shelljs');
             var command = "ansible-playbook " + deployFile;
             console.log(command);
@@ -496,7 +517,7 @@ define([], function () {
 
 
             var sleep = require('sleep');
-
+            sleep.sleep(1);
             function callback() {
                 sleep.sleep(1);
                 var shell = require('shelljs');
@@ -507,16 +528,16 @@ define([], function () {
                 //exec(command);
                 var sshCmd = "ssh ubuntu@" + hostip + " echo 'hello'";
                 console.log(sshCmd);
-                pool.end();
+                // webpool.end();
                 while (true) {
                     var hello = shell.exec(sshCmd).stdout;
                     // console.log(hello);
-                    sleep.sleep(30);
                     if (hello === 'hello\n') {
                         console.log("hello");
                         exec(command);
                         break;
                     }
+                    sleep.sleep(20);
                 }
             }
         }

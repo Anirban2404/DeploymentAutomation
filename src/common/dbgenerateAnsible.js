@@ -11,9 +11,11 @@ define([], function () {
             var name = readJSON['DBApplicationModel']['AppName'];
             var hostip = readJSON['DBApplicationModel']['host_ip'];
             var srcPath = readJSON['DBApplicationModel']['srcPath'];
-            var user = readJSON['DBApplicationModel']['user'];
-            var password = readJSON['DBApplicationModel']['password'];
+            var dbuser = readJSON['DBApplicationModel']['user'];
+            var dbpassword = readJSON['DBApplicationModel']['password'];
             var dbEngine = readJSON['DBApplicationModel']['dbEngine'];
+            var dbnames = readJSON['DBApplicationModel']['dbnames'];
+            var dbLocation = readJSON['DBApplicationModel']['dbLocation'];
             var port = readJSON['DBApplicationModel']['port'];
             var ostype = readJSON['DBApplicationModel']['OS']['name'];
             var osversion = readJSON['DBApplicationModel']['OS']['version'];
@@ -21,9 +23,9 @@ define([], function () {
             // console.log(AppType);
             // console.log(name);
             // console.log(srcPath);
-            // console.log(user);
+            console.log(dbuser);
             //
-            // console.log(password);
+            // console.log(dbpassword);
             // console.log(port);
             //
             // console.log(dbEngine);
@@ -46,12 +48,14 @@ define([], function () {
 
             dbpool = mysql.createPool({
                 connectionLimit: 10,
-                host: '127.0.0.1',
+                host: '129.59.234.224',
                 user: 'root',
+                port: 3306,
                 password: 'isislab',
                 debug: false,
                 multipleStatements: true,
-                acquireTimeout: Number.POSITIVE_INFINITY
+                acquireTimeout: Number.POSITIVE_INFINITY,
+                queueLimit: 10
             });
 
             // Create ansible file for DBServer
@@ -171,7 +175,7 @@ define([], function () {
                 if (err) {
                     console.log(err);
                 } else {
-                    console.log('Role Directory ' + directory + ' created.');
+                    console.log('Task Directory ' + directory + ' created.');
                 }
             });
             // Creating Main Task file
@@ -206,11 +210,11 @@ define([], function () {
                 fs.appendFileSync(mainTaskFile, install_dbEngine);
                 console.log(install_dbEngine);
 
-                var mysqlconf = "\n      mysql_port: 3306 #Default is 3306, please change it if you are using non-standard\n";
-                mysqlconf += "      mysql_bind_address: \"0.0.0.0\" #Change it to 0.0.0.0,if you want to listen everywhere\n";
-                mysqlconf += "      mysql_user: root\n";
-                mysqlconf += "      mysql_root_pass: admin #MySQL Root Password\n";
-
+                var mysqlconf = "\n      mysql_port: " + port + "\n"; //3306 #Default is 3306, please change it if you are using non-standard\n";
+                mysqlconf += "      mysql_bind_address: \"0.0.0.0\" \n" //#Change it to 0.0.0.0,if you want to listen everywhere\n";
+                mysqlconf += "      mysql_user: " + dbuser + "\n"; //root\n";
+                mysqlconf += "      mysql_root_pass: " + dbpassword + "\n"; // admin #MySQL Root Password\n";
+                console.log(mysqlconf);
                 fs.appendFileSync(dbdeployFile, mysqlconf);
 
 
@@ -220,36 +224,49 @@ define([], function () {
                 console.log(dbdeployFile);
                 var pkg_result = "";
                 var replace = require("replace");
+                var sleep = require('sleep');
 
                 // Query the DataBase
-                dbpool.getConnection(function (err, connection) {
-                    if (err) throw err;
-                    else {
-                        connection.query(sql, function (err, rows) {
-                            connection.release();
-                            if (err) {
-                                console.error('error running query', err);
-                            } else {
-                                for (var row in rows) {
-                                    var rowResult = "         - " + rows[row].pkg_name;
-                                    console.log(rowResult);
-                                    pkg_result += rowResult + "\n";
+                function sqlhandleDisconnect() {
+                    dbpool.getConnection(function (err, connection) {
+                        console.log("DBpool connecting...");
+                        sleep.sleep(1);
+                        if (err) {
+                            console.log(err);
+                            sqlhandleDisconnect();
+                        }
+                        else {
+                            connection.query(sql, function (err, rows) {
+                                connection.release();
+                                if (err) {
+                                    console.error('error running query', err);
+                                } else {
+                                    console.log("DBpool connected...");
+                                    // console.log(rows);
+                                    for (var row in rows) {
+                                        var rowResult = "         - " + rows[row].pkg_name;
+                                        console.log(rowResult);
+                                        pkg_result += rowResult + "\n";
+                                    }
+                                    if (pkg_result.length > 0) {
+                                        replace({
+                                            regex: "        <<packages>>",
+                                            replacement: pkg_result,
+                                            paths: [dbdeployFile],
+                                            recursive: true,
+                                            silent: true,
+                                        });
+                                        callback();
+                                    }
                                 }
-                                if (pkg_result.length > 0) {
-                                    replace({
-                                        regex: "        <<packages>>",
-                                        replacement: pkg_result,
-                                        paths: [dbdeployFile],
-                                        recursive: true,
-                                        silent: true,
-                                    });
-                                    callback();
-                                }
-                            }
-                        });
+                            });
 
-                    }
-                });
+                        }
+                    });
+                }
+
+                sqlhandleDisconnect();
+
 
                 console.log(ostype + osversion);
                 var mysqlTempFile = deploydir + "/templates/mysqlTemp";
@@ -261,14 +278,30 @@ define([], function () {
                 // Creating Task file
                 var mysqlTaskFile = roleTaskDir + "/" + "install_" + dbEngine.toLowerCase() + ".yml";
                 console.log(mysqlTaskFile);
-                fs.writeFile(mysqlTaskFile, mysqlTemp, function (err) {
-                    if (err) {
-                        return console.log(err);
-                    }
+                fs.writeFileSync(mysqlTaskFile, mysqlTemp);//, function (err) {
+                //     if (err) {
+                //         return console.log(err);
+                //     }
+                //
+                //     console.log("The node file was generated!");
+                // });
 
-                    console.log("The node file was generated!");
-                });
+                var dbname = dbnames.split(",");
+                var dbLoc = dbLocation.split(",");
 
+                for (var a = 0; a < dbname.length; a++) {
+                    var nameval = dbname[a];
+                    var locval = dbLoc[a];
+                    console.log(nameval, "-----", locval);
+                    var adddb = "\n- name: Create Application Database\n";
+                    adddb += "  mysql_db: name=" + nameval + " state=import target=/var/www/html/" + locval + "\n";
+                    console.log(adddb);
+                    fs.appendFileSync(mysqlTaskFile, adddb);
+                }
+
+                var appdbuser = "- name: Create Application DB User\n";
+                appdbuser += "  mysql_user: name={{ mysql_user }} password={{ mysql_root_pass }} priv=*.*:ALL host='%' state=present\n"
+                fs.appendFileSync(mysqlTaskFile, appdbuser);
 
                 // Creating Template files
                 var roleTempDir = roleAppDir + "/" + "templates";
@@ -375,16 +408,17 @@ define([], function () {
                 //exec(command);
                 var sshCmd = "ssh ubuntu@" + hostip + " echo 'hello'";
                 console.log(sshCmd);
-                dbpool.end();
+                // dbpool.end();
                 while (true) {
                     var hello = shell.exec(sshCmd).stdout;
                     // console.log(hello);
-                    sleep.sleep(30);
+
                     if (hello === 'hello\n') {
                         console.log("hello");
                         exec(command);
                         break;
                     }
+                    sleep.sleep(30);
                 }
             }
         }
