@@ -177,6 +177,33 @@ define([
                 for (i = 0; i < childrenPaths.length; i += 1) {
 
                     var childNode = self.pathToNode[childrenPaths[i]];
+
+                    if (self.isMetaTypeOf(childNode, self.META['ConnectsTo']) === true) {
+                        childName = self.core.getAttribute(childNode, 'name');
+                        self.logger.info('At childNode', childName);
+                        var src_Path = self.core.getPointerPath(childNode, 'src');
+                        var dst_Path = self.core.getPointerPath(childNode, 'dst');
+                        //var srcNode, dstNode;
+
+                        // self.logger.info(src_Path);
+                        // self.logger.info(dst_Path);
+                        if (src_Path && dst_Path) {
+                            var srcNode = self.pathToNode[src_Path];
+                            var dstNode = self.pathToNode[dst_Path];
+                            self.logger.info(self.core.getAttribute(childNode, 'name'));
+                            self.logger.info('connects');
+                            self.logger.info(self.core.getAttribute(srcNode, 'name'));
+                            self.logger.info('-->');
+                            self.logger.info(self.core.getAttribute(dstNode, 'name'));
+                        }
+                        if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true && self.isMetaTypeOf(dstNode, self.META['DBApplication']) === true){
+                            self.logger.error("DB");
+                            dbdependendency = true;
+                            webdependent = true;
+
+                        }
+                    }
+
                     if (self.isMetaTypeOf(childNode, self.META['HostedOn']) === true) {
                         var childName = self.core.getAttribute(childNode, 'name');
                         // self.logger.info('At childNode', childName);
@@ -375,7 +402,7 @@ define([
                                                 // self.logger.info(host_ip);
                                                 console.log("+++++++++++++++src/plugins/ansibleVMspawn/hostTemp" + vmName);
                                                 console.log(JSON.stringify(webModel, null, 4));
-                                                sleep.sleep(1);
+                                                sleep.sleep(5);
                                                 webAnsible.webgenerateAnsible(JSON.stringify(webModel, null, 4));
                                             }
 
