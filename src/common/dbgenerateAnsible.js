@@ -374,6 +374,155 @@ define([], function () {
                 });
             }
 
+            if (dbEngine.toLowerCase() == "mongodb") {
+
+                var copyCode = "- include: copy_code.yml\n";
+                fs.appendFileSync(mainTaskFile, copyCode);
+                //Read the header file
+                var copyTempfile = deploydir + "/templates/copy_code_LAMP";
+                var copyTemp = fs.readFileSync(copyTempfile, 'utf8');
+                // Creating Copy-code file
+                var copyTaskFile = roleTaskDir + "/" + "copy_code.yml";
+                console.log(copyTaskFile);
+                fs.writeFile(copyTaskFile, copyTemp, function (err) {
+                    if (err) {
+                        return console.log(err);
+                    }
+
+                    console.log("The copy file was generated!");
+                });
+
+                var sql = "SELECT b.pkg_name FROM softwaredependency.packages b ,softwaredependency.swdependency a where b.app_id=a.id and a.AppType='" + dbEngine.toLowerCase() + "'";
+                sql += "and b.sw_id in (select app_sw_id FROM softwaredependency.os_dependency where os_id in (SELECT id FROM softwaredependency.os_pkg_mgr ";
+                sql += "where concat(OS_type,OS_version) = '" + ostype + osversion + "'))";
+                console.log(sql);
+                var install_dbEngine = "- include: install_" + dbEngine.toLowerCase() + ".yml\n";
+
+                fs.appendFileSync(mainTaskFile, install_dbEngine);
+                console.log(install_dbEngine);
+
+
+
+                var mongoconf = "\n      mongo_port: " + port + "\n"; //270717
+                mongoconf += "      mongo_bind_address: \"0.0.0.0\" \n" //#Change it to 0.0.0.0,if you want to listen everywhere\n";
+                mongoconf += "      mongo_user: " + dbuser + "\n"; //root\n";
+                mongoconf += "      mongo_root_pass: " + dbpassword + "\n"; // admin #MySQL Root Password\n";
+                console.log(mongoconf);
+                fs.appendFileSync(dbdeployFile, mongoconf);
+
+                var ubuntu_pkg_vars = "\n\n      ubuntu_" + dbEngine.toLowerCase() + "_pkgs:\n";
+                ubuntu_pkg_vars += "        <<packages>>"
+                fs.appendFileSync(dbdeployFile, ubuntu_pkg_vars);
+                console.log(dbdeployFile);
+                var pkg_result = "";
+                var replace = require("replace");
+                var sleep = require('sleep');
+
+                // Query the DataBase
+                function sqlhandleDisconnect() {
+                    dbpool.getConnection(function (err, connection) {
+                        console.log("DBpool connecting...");
+                        sleep.sleep(1);
+                        if (err) {
+                            console.log(err);
+                            sqlhandleDisconnect();
+                        }
+                        else {
+                            connection.query(sql, function (err, rows) {
+                                connection.release();
+                                if (err) {
+                                    console.error('error running query', err);
+                                } else {
+                                    console.log("DBpool connected...");
+                                    // console.log(rows);
+                                    for (var row in rows) {
+                                        var rowResult = "         - " + rows[row].pkg_name;
+                                        console.log(rowResult);
+                                        pkg_result += rowResult + "\n";
+                                    }
+                                    if (pkg_result.length > 0) {
+                                        replace({
+                                            regex: "        <<packages>>",
+                                            replacement: pkg_result,
+                                            paths: [dbdeployFile],
+                                            recursive: true,
+                                            silent: true,
+                                        });
+                                        callback();
+                                    }
+                                }
+                            });
+
+                        }
+                    });
+                }
+
+                sqlhandleDisconnect();
+
+                console.log(ostype + osversion);
+                var mongoTempFile = deploydir + "/templates/mongodbTemp";
+
+                console.log(mongoTempFile);
+                //Read the header file
+                var mongoTemp = fs.readFileSync(mongoTempFile, 'utf8');
+
+                // Creating Task file
+                var mongoTaskFile = roleTaskDir + "/" + "install_" + dbEngine.toLowerCase() + ".yml";
+                console.log(mongoTaskFile);
+                fs.writeFileSync(mongoTaskFile, mongoTemp);
+
+
+                // Creating Template files
+                var roleTempDir = roleAppDir + "/" + "templates";
+                fs.ensureDirSync(roleTempDir, function (err) {
+                    if (err) {
+                        console.log(err);
+                    } else {
+                        console.log('Role Directory ' + directory + ' created.');
+                    }
+                });
+
+                //Read the header file
+                var cnfiniTempfile = deploydir + "/templates/mongoTemp";
+                console.log(mysqlTempFile);
+
+                var cnfiniTemp = fs.readFileSync(cnfiniTempfile, 'utf8');
+                // Creating Copy-code file
+                var cnfiniTempFile = roleTempDir + "/" + "mongod.conf";
+                console.log(cnfiniTempFile);
+                fs.writeFile(cnfiniTempFile, cnfiniTemp, function (err) {
+                    if (err) {
+                        return console.log(err);
+                    }
+
+                    console.log("The mongod.conf file was generated!");
+                });
+
+                // Creating Handler files
+                var roleHandlerDir = roleAppDir + "/" + "handlers";
+                fs.ensureDirSync(roleHandlerDir, function (err) {
+                    if (err) {
+                        console.log(err);
+                    } else {
+                        console.log('Handler Directory ' + directory + ' created.');
+                    }
+                });
+
+                //Read the header file
+                var mongoHandlerfile = deploydir + "/templates/mongoHandler";
+                var mongoHandler = fs.readFileSync(mongoHandlerfile, 'utf8');
+                // Creating Copy-code file
+                var mongoHandlerFile = roleHandlerDir + "/" + "main.yml";
+                console.log(mongoHandlerFile);
+                fs.writeFile(mongoHandlerFile, mongoHandler, function (err) {
+                    if (err) {
+                        return console.log(err);
+                    }
+
+                    console.log("The mongoHandler file was generated!");
+                });
+
+            }
 
             var roles = "\n\n  roles:\n";
             roles += "    - " + name;

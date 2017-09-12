@@ -210,16 +210,15 @@ define([], function () {
                     console.log('Connection %d acquired', connection.threadId);
                 });
 
-                handleDisconnect();
 
-                function handleDisconnect() {
+                function phphandleDisconnect() {
                     // Query the DataBase
                     webpool.getConnection(function (err, connection) {
                         console.log("Webpool connecting...");
                         sleep.sleep(1);
                         if (err) {
                             console.log(err);
-                            handleDisconnect();
+                            phphandleDisconnect();
                         }
                         else {
                             connection.query(php_sql, function (err, rows) {
@@ -254,6 +253,8 @@ define([], function () {
                         }
                     });
                 }
+
+                phphandleDisconnect();
 
                 console.log(ostype + osversion);
                 var mysqlTempFile;
@@ -353,41 +354,44 @@ define([], function () {
                 var pkg_rslt = "";
                 var replace = require("replace");
 
-
-                webpool.getConnection(function (err, connection) {
-                    console.log("Webpool connecting...");
-                    sleep.sleep(2);
-                    if (err)
-                        return console.log(err);
-                    else {
-                        connection.query(node_sql, function (err, rows) {
-                            connection.release();
-                            if (err) {
-                                console.error('error running query', err);
-                            } else {
-                                console.log("Webpool connected...");
-                                for (var nrow in rows) {
-                                    var rowResult = "         - " + rows[nrow].pkg_name;
-                                    console.log(rowResult);
-                                    pkg_rslt += rowResult + "\n";
+                function nodehandleDisconnect() {
+                    webpool.getConnection(function (err, connection) {
+                        console.log("Webpool connecting...");
+                        sleep.sleep(2);
+                        if (err) {
+                            console.log(err);
+                            nodehandleDisconnect();
+                        }
+                        else {
+                            connection.query(node_sql, function (err, rows) {
+                                connection.release();
+                                if (err) {
+                                    console.error('error running query', err);
+                                } else {
+                                    console.log("Webpool connected...");
+                                    for (var nrow in rows) {
+                                        var rowResult = "         - " + rows[nrow].pkg_name;
+                                        console.log(rowResult);
+                                        pkg_rslt += rowResult + "\n";
+                                    }
+                                    if (pkg_rslt.length > 0) {
+                                        replace({
+                                            regex: "        <<package>>",
+                                            replacement: pkg_rslt,
+                                            paths: [webdeployFile],
+                                            recursive: true,
+                                            silent: true,
+                                        });
+                                        callback();
+                                    }
                                 }
-                                if (pkg_rslt.length > 0) {
-                                    replace({
-                                        regex: "        <<package>>",
-                                        replacement: pkg_rslt,
-                                        paths: [webdeployFile],
-                                        recursive: true,
-                                        silent: true,
-                                    });
-                                    callback();
-                                }
-                            }
-                        });
+                            });
 
-                    }
-                });
+                        }
+                    });
+                }
 
-
+                nodehandleDisconnect();
                 //conn.end();
 
                 var nodeTempfile = deploydir + "/templates/nodeTemplate";
@@ -462,46 +466,53 @@ define([], function () {
                     // var hndlr_result = "";
                     var en_result = "";
                     var hndlr_result = "";
-                    // Query the DataBase
-                    webpool.getConnection(function (err, connection) {
-                        console.log("Webpool connecting...");
-                        if (err)
-                            return console.log(err);
-                        else {
-                            connection.query(en_sql, function (err, rows) {
-                                connection.release();
-                                if (err) {
-                                    console.error('error running query', err);
-                                } else {
-                                    console.log("Webpool connected...");
-                                    for (var row in rows) {
-                                        var rowResult = rows[row].pkg_name;
-                                        console.log(rowResult);
-                                        en_result += rowResult + "\n";
-                                        hndlr_result += rowResult;
-                                    }
-                                    if (en_result.length > 0) {
-                                        replace({
-                                            regex: "<<apache>>",
-                                            replacement: en_result,
-                                            paths: [apacheTaskFile],
-                                            recursive: true,
-                                            silent: true,
-                                        });
-                                        replace({
-                                            regex: "<<apache>>",
-                                            replacement: hndlr_result,
-                                            paths: [apacheHandlerFile],
-                                            recursive: true,
-                                            silent: true,
-                                        });
-                                        callback();
-                                    }
-                                }
-                            });
 
-                        }
-                    });
+                    // Query the DataBase
+                    function apachehandleDisconnect() {
+                        webpool.getConnection(function (err, connection) {
+                            console.log("Webpool connecting...");
+                            if (err) {
+                                console.log(err);
+                                apachehandleDisconnect();
+                            }
+                            else {
+                                connection.query(en_sql, function (err, rows) {
+                                    connection.release();
+                                    if (err) {
+                                        console.error('error running query', err);
+                                    } else {
+                                        console.log("Webpool connected...");
+                                        for (var row in rows) {
+                                            var rowResult = rows[row].pkg_name;
+                                            console.log(rowResult);
+                                            en_result += rowResult + "\n";
+                                            hndlr_result += rowResult;
+                                        }
+                                        if (en_result.length > 0) {
+                                            replace({
+                                                regex: "<<apache>>",
+                                                replacement: en_result,
+                                                paths: [apacheTaskFile],
+                                                recursive: true,
+                                                silent: true,
+                                            });
+                                            replace({
+                                                regex: "<<apache>>",
+                                                replacement: hndlr_result,
+                                                paths: [apacheHandlerFile],
+                                                recursive: true,
+                                                silent: true,
+                                            });
+                                            callback();
+                                        }
+                                    }
+                                });
+
+                            }
+                        });
+                    }
+
+                    apachehandleDisconnect();
                 }
             }
 
@@ -518,6 +529,7 @@ define([], function () {
 
             var sleep = require('sleep');
             sleep.sleep(1);
+
             function callback() {
                 sleep.sleep(1);
                 var shell = require('shelljs');
