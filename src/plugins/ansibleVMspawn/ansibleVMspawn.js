@@ -113,6 +113,8 @@ define([
                     hostname: "",
                     image: "",
                     network: "",
+                    imageName: "",
+                    keyName: "",
                     OS: {
                         name: "",
                         version: ""
@@ -172,6 +174,8 @@ define([
                 var map = new HashMap();
                 var dstNodes = [];
                 var srcNodes = [];
+                var dbdependendency = false;
+                var webdependent = false;
                 var childrenPaths = self.core.getChildrenPaths(self.activeNode);
                 // console.log(childrenPaths.length);
                 for (i = 0; i < childrenPaths.length; i += 1) {
@@ -251,6 +255,13 @@ define([
                             dataModel.ansibleModel.network = network;
                             // self.logger.info(network);
 
+                            var imageName = self.core.getAttribute(dstNode, 'imageName');
+                            dataModel.ansibleModel.imageName = imageName;
+                            // self.logger.info(imageName);
+
+                            var keyName = self.core.getAttribute(dstNode, 'keyName');
+                            dataModel.ansibleModel.keyName = keyName;
+                            // self.logger.info(keyName);
 
 
                             if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true) {

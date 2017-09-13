@@ -14,8 +14,7 @@
           flavor: "{{ Flavor_Name }}"
           key_name: "{{ Key_Name }}"
           security_groups: default
-          availability_zone: "{{ Host_Name }}"
-          auto_floating_ip: false
+          auto_floating_ip: true
           nics:
             - net-name: "{{ Network_Name }}"
           wait: yes

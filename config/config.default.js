@@ -7,11 +7,22 @@ var config = require('./config.webgme'),
 // config.server.port = 8080;
 // config.mongo.uri = 'mongodb://127.0.0.1:27017/webgme_my_app';
 
+// User Registration
+config.authentication.enable = true
+config.authentication.allowGuests = true
+config.authentication.allowUserRegistration = true
+config.authentication.guestAccount = 'guest'
+
+// Seeds
+config.seedProjects.enable = true;
+config.seedProjects.defaultProject = 'CloudCAMP';
+config.seedProjects.basePaths.push("./src/seeds");
+
 // Add/overwrite any additional settings here
 config.server.port = 8888;
 // config.mongo.uri = 'mongodb://127.0.0.1:27017/webgme_my_app';
 config.authentication.allowUserRegistration = true
-//config.authentication.enable = true
+config.authentication.enable = true
 config.authentication.allowGuests = true
 
 // Plugins
