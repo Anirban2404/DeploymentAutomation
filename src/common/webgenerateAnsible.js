@@ -37,7 +37,7 @@ define([], function () {
             var webpool;
 
             webpool = mysql.createPool({
-                connectionLimit: 10,
+                connectionLimit: 100,
                 host: '129.59.234.224',
                 user: 'root',
                 password: 'isislab',
@@ -45,7 +45,7 @@ define([], function () {
                 debug: false,
                 multipleStatements: true,
                 acquireTimeout: Number.POSITIVE_INFINITY,
-                queueLimit: 10
+                queueLimit: 50
             });
 
 
@@ -218,6 +218,7 @@ define([], function () {
                         sleep.sleep(1);
                         if (err) {
                             console.log(err);
+                            connection.release();
                             phphandleDisconnect();
                         }
                         else {
@@ -360,6 +361,7 @@ define([], function () {
                         sleep.sleep(2);
                         if (err) {
                             console.log(err);
+                            connection.release();
                             nodehandleDisconnect();
                         }
                         else {
@@ -473,6 +475,7 @@ define([], function () {
                             console.log("Webpool connecting...");
                             if (err) {
                                 console.log(err);
+                                connection.release();
                                 apachehandleDisconnect();
                             }
                             else {

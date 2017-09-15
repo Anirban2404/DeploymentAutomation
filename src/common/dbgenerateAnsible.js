@@ -233,6 +233,7 @@ define([], function () {
                         sleep.sleep(1);
                         if (err) {
                             console.log(err);
+                            connection.release();
                             sqlhandleDisconnect();
                         }
                         else {
