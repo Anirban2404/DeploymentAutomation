@@ -200,7 +200,7 @@ define([
                             self.logger.info('-->');
                             self.logger.info(self.core.getAttribute(dstNode, 'name'));
                         }
-                        if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true && self.isMetaTypeOf(dstNode, self.META['DBApplication']) === true){
+                        if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true && self.isMetaTypeOf(dstNode, self.META['DBApplication']) === true) {
                             self.logger.error("DB");
                             dbdependendency = true;
                             webdependent = true;
@@ -356,6 +356,7 @@ define([
                             // var hostTempfile = "src/plugins/ansibleVMspawn/hostTemp" + vmName;
 
                             // console.log(dstNodes.indexOf(vmName));
+                            var shell = require('shelljs');
 
                             if (dstNodes.indexOf(dst_node) === -1) {
                                 openstackVMspawn.spawnVM(JSON.stringify(dataModel, null, 4));
@@ -363,6 +364,9 @@ define([
                                 // console.log(JSON.stringify(dataModel, null, 4));
                                 // console.log(vmName);
                                 dstNodes.push(vmName);
+                                var hostTempfile = "src/plugins/ansibleVMspawn/hostTemp" + vmName;
+                                var touch = "touch " + hostTempfile;
+                                shell.exec(touch, {async: true});
                             }
                             else if (dstNodes.indexOf(dst_node) > -1) {
                                 console.log(dst_node + ' already exists');
@@ -373,11 +377,13 @@ define([
                             var d_visited = false;
                             console.log(srcNodes);
 
+
                             var sync = require('synchronize');
                             for (var tnodes = 0; tnodes < dstNodes.length; tnodes++) {
                                 // sleep.sleep(5);
                                 var hostTempfile = "src/plugins/ansibleVMspawn/hostTemp" + dstNodes[tnodes];
                                 console.log(map.get(dstNodes[tnodes]), "--->", dstNodes[tnodes]);
+
                                 var connectedNode = map.get(dstNodes[tnodes]);
 
                                 sync.fiber(function () {
@@ -392,7 +398,7 @@ define([
                                 sleep.sleep(5);
                                 require('file-size-watcher').watch(hostTempfile).on('sizeChange',
                                     function callback(newSize, oldSize) {
-                                        console.log('The file size changed from ' + oldSize + ' to ' + newSize);
+                                        console.log(hostTempfile + 'The file size changed from ' + oldSize + ' to ' + newSize);
                                         console.log("========", hostTempfile, "===========");
                                         if (newSize > oldSize + 10) {
                                             // visited = true;
@@ -434,6 +440,8 @@ define([
                                             }
                                         }
                                     });
+
+
                             } // populateModel ends
                         }
                     }
