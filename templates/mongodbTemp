@@ -1,0 +1,25 @@
+---
+- name: Import MongoDB public GPG Key
+  apt_key: id=0C49F3730359A14518585931BC711F9BA15703C6  keyserver=keyserver.ubuntu.com
+
+- name: Add MongoDB repository into sources list
+  apt_repository: repo='deb http://repo.mongodb.org/apt/ubuntu {{ansible_distribution_release}}/mongodb-org/3.4 multiverse' state=present
+
+- name: Install MongoDB package
+  apt: pkg={{ item }} state=present update_cache=yes
+  with_items: "{{ ubuntu_mongodb_pkgs }}"
+
+- name: Start mongod
+  shell: "mongod &"
+
+- name: Copy the templates to their respestive destination
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode | default(644) }}"
+  with_items:
+    - { src: 'mongod.conf', dest: '/etc/mongod.conf' }
+  notify:
+    - Restart MongoDB

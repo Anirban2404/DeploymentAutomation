@@ -15,30 +15,46 @@
     "plugin": "node ./node_modules/webgme/src/bin/run_plugin.js",
     "pluginHook": "node ./node_modules/webgme/src/bin/plugin_hook.js",
     "users": "node ./node_modules/webgme/src/bin/usermanager.js",
-    "clean_up": "node ./node_modules/webgme/src/bin/clean_up.js"
+    "clean_up": "node ./node_modules/webgme/src/bin/clean_up.js",
+    "webgme-constraint-checker": "webgme-constraint-checker"
   },
   "version": "1.0.0",
   "peerDependencies": {
     "webgme": "^2.0.0"
   },
   "devDependencies": {
+    "chai": "^3.0.0",
     "mocha": "^2.2.5",
-    "rimraf": "^2.4.0",
-    "chai": "^3.0.0"
+    "rimraf": "^2.6.2"
   },
   "dependencies": {
+    "Q": "^1.0.0",
+    "async": "^2.5.0",
     "deasync": "^0.1.10",
+    "file-size-watcher": "^0.2.1",
     "fs-extra": "^3.0.1",
+    "hashmap": "^2.3.0",
     "ip": "^1.1.5",
     "loadash": "0.0.1",
     "mkdirp": "^0.5.1",
-    "mysql": "^2.13.0",
+    "mysql": "^2.14.1",
     "node-ansible": "^0.5.5",
     "pkgcloud": "^1.4.0",
-    "pug": "^2.0.0-rc.2",
+    "pug": "^2.0.0-rc.4",
+    "q": "^1.5.0",
     "replace": "^0.3.0",
+    "save": "^2.3.1",
     "shelljs": "^0.7.8",
-    "webgme": "^2.14.0",
+    "simple-ssh": "^1.0.0",
+    "sleep": "^5.1.1",
+    "synchronize": "^2.0.0",
+    "trim": "0.0.1",
+    "wait-for-port": "0.0.2",
+    "wait.for": "^0.6.6",
+    "webgme": "^2.17.1",
+    "webgme-cli": "^2.4.0",
+    "webgme-codeeditor": "^3.1.2",
+    "webgme-constraint-checker": "^1.1.1",
     "webgme-fab": "^2.1.0",
     "webgme-icore": "^0.2.0"
   }

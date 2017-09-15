@@ -1,0 +1,7 @@
+---
+- name: install <<apache>>
+  apt: name={{ item }} update_cache=yes state=latest
+  with_items:
+      - <<apache>>
+  notify:
+      - start <<apache>>

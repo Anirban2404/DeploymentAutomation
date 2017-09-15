@@ -12,17 +12,35 @@
       "websserverAnsible": {
         "src": "src/plugins/websserverAnsible",
         "test": "test/plugins/websserverAnsible"
+      },
+      "LAMPansible": {
+        "src": "src/plugins/LAMPansible",
+        "test": "test/plugins/LAMPansible"
       }
     },
-    "visualizers": {},
+    "visualizers": {
+      "codeVizualizer": {
+        "src": "panels/codeVizualizer/codeVizualizerPanel",
+        "title": "codeVizualizer",
+        "panel": "src/visualizers/panels/codeVizualizer",
+        "secondary": false,
+        "widget": "src/visualizers/widgets/codeVizualizer"
+      }
+    },
     "decorators": {
       "openStackDecorator": {
         "src": "src/decorators/openStackDecorator"
       }
-    }
+    },
+    "routers": {}
   },
   "dependencies": {
-    "plugins": {},
+    "plugins": {
+      "ConstraintChecker": {
+        "project": "webgme-constraint-checker",
+        "path": "node_modules/webgme-constraint-checker/src/plugins/ConstraintChecker"
+      }
+    },
     "visualizers": {
       "ICore": {
         "src": "panels/ICore/ICorePanel",
@@ -39,8 +57,31 @@
         "secondary": true,
         "widget": "src/visualizers/widgets/FloatingActionButton",
         "project": "webgme-fab"
+      },
+      "CodeEditor": {
+        "src": "panels/CodeEditor/CodeEditorPanel",
+        "title": "CodeEditor",
+        "panel": "src/visualizers/panels/CodeEditor",
+        "secondary": false,
+        "widget": "src/visualizers/widgets/CodeEditor",
+        "project": "webgme-codeeditor"
+      },
+      "ConstraintCheckerCommitBadge": {
+        "src": "panels/ConstraintCheckerCommitBadge/ConstraintCheckerCommitBadgePanel",
+        "title": "ConstraintCheckerCommitBadge",
+        "panel": "src/visualizers/panels/ConstraintCheckerCommitBadge",
+        "secondary": true,
+        "widget": "src/visualizers/widgets/ConstraintCheckerCommitBadge",
+        "project": "webgme-constraint-checker"
       }
     },
-    "decorators": {}
+    "decorators": {},
+    "routers": {
+      "ConstraintResults": {
+        "project": "webgme-constraint-checker",
+        "path": "node_modules/webgme-constraint-checker/src/routers/ConstraintResults",
+        "mount": "routers/ConstraintResults"
+      }
+    }
   }
 }

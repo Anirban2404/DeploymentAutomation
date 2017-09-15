@@ -314,13 +314,14 @@ define([
             var ubuntu_pkg_vars = "\n\n      ubuntu_" + language.toLowerCase()+"_pkgs:\n";
             ubuntu_pkg_vars += "        <<packages>>"
             fs.appendFileSync(deployFile, ubuntu_pkg_vars);
-
+            console.log(deployFile);
             var pkg_result ="";
             var replace = require("replace");
             conn.query(sql, function (err, rows) {
                 if (err) throw err;
                 for (var i in rows) {
                     var rowResult = "         - " + rows[i].pkg_name;
+                    console.log(rowResult);
                     pkg_result += rowResult +"\n";
                 }
                 replace({
