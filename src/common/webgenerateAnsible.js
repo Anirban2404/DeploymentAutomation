@@ -218,8 +218,8 @@ define([], function () {
                         sleep.sleep(1);
                         if (err) {
                             console.log(err);
-                            connection.release();
-                            phphandleDisconnect();
+                            //connection.release();
+                            setTimeout(phphandleDisconnect, 2000);
                         }
                         else {
                             connection.query(php_sql, function (err, rows) {
@@ -227,6 +227,7 @@ define([], function () {
 
                                 if (err) {
                                     console.error('error running query', err);
+                                    setTimeout(phphandleDisconnect, 2000);
                                 } else {
                                     console.log("Webpool connected...");
                                     console.log(rows);
@@ -361,7 +362,7 @@ define([], function () {
                         sleep.sleep(2);
                         if (err) {
                             console.log(err);
-                            connection.release();
+                            //connection.release();
                             nodehandleDisconnect();
                         }
                         else {
@@ -369,6 +370,7 @@ define([], function () {
                                 connection.release();
                                 if (err) {
                                     console.error('error running query', err);
+                                    setTimeout(nodehandleDisconnect, 2000);
                                 } else {
                                     console.log("Webpool connected...");
                                     for (var nrow in rows) {
@@ -475,14 +477,16 @@ define([], function () {
                             console.log("Webpool connecting...");
                             if (err) {
                                 console.log(err);
-                                connection.release();
-                                apachehandleDisconnect();
+                                //connection.release();
+                                setTimeout(apachehandleDisconnect, 2000);
                             }
                             else {
                                 connection.query(en_sql, function (err, rows) {
-                                    connection.release();
+
                                     if (err) {
                                         console.error('error running query', err);
+                                        connection.release();
+                                        setTimeout(apachehandleDisconnect, 2000);
                                     } else {
                                         console.log("Webpool connected...");
                                         for (var row in rows) {
@@ -544,16 +548,18 @@ define([], function () {
                 var sshCmd = "ssh ubuntu@" + hostip + " echo 'hello'";
                 console.log(sshCmd);
                 // webpool.end();
-                while (true) {
-                    var hello = shell.exec(sshCmd).stdout;
-                    // console.log(hello);
-                    if (hello === 'hello\n') {
-                        console.log("hello");
-                        exec(command);
-                        break;
-                    }
-                    sleep.sleep(20);
+                // while (true) {
+                var hello = shell.exec(sshCmd).stdout;
+                // console.log(hello);
+
+                if (hello === 'hello\n') {
+                    console.log("hello");
+                    exec(command);
+                    //break;
                 }
+                else
+                    setTimeout(callback, 2000);
+                // }
             }
         }
     }

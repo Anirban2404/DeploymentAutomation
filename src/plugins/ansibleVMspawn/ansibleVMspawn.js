@@ -380,7 +380,7 @@ define([
 
                             var sync = require('synchronize');
                             for (var tnodes = 0; tnodes < dstNodes.length; tnodes++) {
-                                // sleep.sleep(5);
+                                sleep.sleep(5);
                                 var hostTempfile = "src/plugins/ansibleVMspawn/hostTemp" + dstNodes[tnodes];
                                 console.log(map.get(dstNodes[tnodes]), "--->", dstNodes[tnodes]);
 
