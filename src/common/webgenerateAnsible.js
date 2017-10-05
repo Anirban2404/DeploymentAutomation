@@ -558,7 +558,7 @@ define([], function () {
                     //break;
                 }
                 else
-                    setTimeout(callback, 2000);
+                    setTimeout(callback, 30000);
                 // }
             }
         }

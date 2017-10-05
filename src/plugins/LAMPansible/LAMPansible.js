@@ -12,12 +12,14 @@ define([
     'text!./metadata.json',
     'plugin/PluginBase',
     'cloudcamp/webgenerateAnsible',
-    'cloudcamp/dbgenerateAnsible'
+    'cloudcamp/dbgenerateAnsible',
+    'cloudcamp/dataanalyticsgenerateAnsible'
 ], function (PluginConfig,
              pluginMetadata,
              PluginBase,
              webAnsible,
-             dbAnsible) {
+             dbAnsible,
+             analyticsAnsible) {
     'use strict';
 
     pluginMetadata = JSON.parse(pluginMetadata);
@@ -109,6 +111,24 @@ define([
                 }
             };
 
+        var analyticsModel =
+            {
+                dataAnalyticsModel: {
+                    AppType: "",
+                    AppName: "",
+                    host_ip: "",
+                    srcPath: "",
+                    replication_count: "",
+                    analyticsEngine: "",
+                    jupyter: "",
+                    OS: {
+                        name: "",
+                        version: ""
+                    }
+
+                }
+            };
+
 
         //this.logger.info (this.core.getAttribute(this.activeNode, 'name'));
 
@@ -131,6 +151,7 @@ define([
 
                 var dbdependendency = false;
                 var webdependent = false;
+                var jupyterdependendency = false;
                 childrenPaths = self.core.getChildrenPaths(self.activeNode);
                 // console.log(childrenPaths.length);
                 for (i = 0; i < childrenPaths.length; i += 1) {
@@ -154,14 +175,26 @@ define([
                             self.logger.info('-->');
                             self.logger.info(self.core.getAttribute(dstNode, 'name'));
                         }
-                        if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true && self.isMetaTypeOf(dstNode, self.META['DBApplication']) === true){
+
+                        // Add the logic if you have ConnectsTo relationship
+                        if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true && self.isMetaTypeOf(dstNode, self.META['DBApplication']) === true) {
                             self.logger.error("DB");
                             dbdependendency = true;
                             webdependent = true;
 
                         }
-                    }
+                        if (self.isMetaTypeOf(srcNode, self.META['Jupyter']) === true && self.isMetaTypeOf(dstNode, self.META['DataAnalyticsApp']) === true) {
+                            self.logger.error("Jupyter");
+                            jupyterdependendency = true;
+                            analyticsModel.dataAnalyticsModel.jupyter = true;
+                        }
 
+                    }
+                }
+                // var sleep = require('sleep');
+                // sleep.sleep(5);
+                for (i = 0; i < childrenPaths.length; i += 1) {
+                    childNode = self.pathToNode[childrenPaths[i]];
                     if (self.isMetaTypeOf(childNode, self.META['HostedOn']) === true) {
                         childName = self.core.getAttribute(childNode, 'name');
                         self.logger.info('At childNode', childName);
@@ -226,6 +259,8 @@ define([
                                 webAnsible.webgenerateAnsible(JSON.stringify(webModel, null, 4));
                             }
                         }
+
+
                         if (self.isMetaTypeOf(srcNode, self.META['DBApplication']) === true && self.isMetaTypeOf(dstNode, self.META['Hardware']) === true) {
                             dbModel.DBApplicationModel.AppType = 'DBApplication';
 
@@ -278,7 +313,60 @@ define([
                                 self.logger.error(" Calling webAnsible..");
                                 dbdependendency = false;
                                 //sleep.sleep(5);
-                                //webAnsible.webgenerateAnsible(JSON.stringify(webModel, null, 4));
+                                webAnsible.webgenerateAnsible(JSON.stringify(webModel, null, 4));
+                            }
+
+                        }
+
+                        // Read and load DataAnalytics Model
+                        if (self.isMetaTypeOf(srcNode, self.META['DataAnalyticsApp']) === true && self.isMetaTypeOf(dstNode, self.META['Hardware']) === true) {
+                            analyticsModel.dataAnalyticsModel.AppType = 'DataAnalyticsApp';
+
+                            var appName = self.core.getAttribute(srcNode, 'name');
+                            analyticsModel.dataAnalyticsModel.AppName = appName;
+                            self.logger.info(appName);
+                            var srcPath = self.core.getAttribute(srcNode, 'src');
+                            analyticsModel.dataAnalyticsModel.srcPath = srcPath;
+                            self.logger.info(srcPath);
+                            var host_ip = self.core.getAttribute(dstNode, 'host_ip');
+                            analyticsModel.dataAnalyticsModel.host_ip = host_ip;
+                            self.logger.info(host_ip);
+
+
+                            var acq_path = self.core.getChildrenPaths(srcNode);
+                            for (j = 0; j < acq_path.length; j += 1) {
+                                acq_node = self.pathToNode[acq_path[j]];
+                                var analyticsEngine = self.core.getAttribute(acq_node, 'name');
+                                analyticsModel.dataAnalyticsModel.analyticsEngine = analyticsEngine;
+                                self.logger.info(analyticsEngine);
+
+                            }
+                            var acq_path = self.core.getChildrenPaths(dstNode);
+                            for (j = 0; j < acq_path.length; j += 1) {
+                                acq_node = self.pathToNode[acq_path[j]];
+                                var os_name = self.core.getAttribute(acq_node, 'name');
+                                analyticsModel.dataAnalyticsModel.OS.name = os_name;
+                                self.logger.info(os_name);
+                                var os_version = self.core.getAttribute(acq_node, 'version');
+                                analyticsModel.dataAnalyticsModel.OS.version = os_version;
+                                self.logger.info(os_version);
+                            }
+
+
+                            self.logger.error(" Calling analyticsAnsible..");
+                            self.logger.error(jupyterdependendency);
+                            //analyticsAnsible.analyticsgenerateAnsible(JSON.stringify(analyticsModel, null, 4));
+                            if (jupyterdependendency === true) {
+                                self.logger.error(" Calling Jupyter..");
+
+                                //sleep.sleep(5);
+                                analyticsAnsible.analyticsgenerateAnsible(JSON.stringify(analyticsModel, null, 4));
+                                jupyterdependendency = false;
+                            }
+                            else {
+
+                                analyticsModel.dataAnalyticsModel.jupyter = false;
+                                analyticsAnsible.analyticsgenerateAnsible(JSON.stringify(analyticsModel, null, 4));
                             }
 
                         }
@@ -289,7 +377,7 @@ define([
                     }
                 }
 
-                return webModel;
+                //return webModel;
             })
             .nodeify(callback);
     };
