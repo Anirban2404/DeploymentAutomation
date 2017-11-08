@@ -7,7 +7,7 @@
   with_items: "{{ ubuntu_jupyter_pkgs }}"
   register: pip
 
-- name: Install Scikit-Learn through pip
+- name: Install Jupyter through pip
   become: true
   pip:
     name: "{{ item }}"
@@ -24,7 +24,7 @@
   become: false
   shell: |
      jupyter notebook --generate-config
-     python pip install --upgrade pip
+     python -m pip install --upgrade pip
      python -m pip install ipykernel
 
   args:

@@ -1,17 +1,17 @@
 ---
-- name: Install Scikit dependencies
+- name: Install tensorFlow dependencies
   apt:
     name: "{{ item }}"
     state: latest
     update_cache: yes
-  with_items: "{{ ubuntu_scikitlearn_pkgs }}"
+  with_items: "{{ ubuntu_tensorflow_pkgs }}"
   register: pip
 
-- name: Install Scikit-Learn through pip
+- name: Install tensorFlow through pip
   become: true
   pip:
     name: "{{ item }}"
     state: forcereinstall
   with_items:
     - pip
-    - scikit-learn
+    - tensorflow

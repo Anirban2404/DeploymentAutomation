@@ -18,7 +18,9 @@
     dest: /home/ubuntu/dataAnalytics
   register: git_finished
   when: create.changed
+  ignore_errors: yes
 
 - name: Make sure owned by ubuntu
   file: path=/home/ubuntu owner=ubuntu group=ubuntu recurse=yes
   when: git_finished.changed
+  ignore_errors: yes

@@ -119,7 +119,8 @@ define([
                     host_ip: "",
                     srcPath: "",
                     replication_count: "",
-                    analyticsEngine: "",
+                    analyticsEngine: [],
+                    platformVersion: "",
                     jupyter: "",
                     OS: {
                         name: "",
@@ -333,12 +334,17 @@ define([
                             self.logger.info(host_ip);
 
 
+
                             var acq_path = self.core.getChildrenPaths(srcNode);
                             for (j = 0; j < acq_path.length; j += 1) {
                                 acq_node = self.pathToNode[acq_path[j]];
                                 var analyticsEngine = self.core.getAttribute(acq_node, 'name');
-                                analyticsModel.dataAnalyticsModel.analyticsEngine = analyticsEngine;
+                                analyticsModel.dataAnalyticsModel.analyticsEngine[j] = analyticsEngine;
                                 self.logger.info(analyticsEngine);
+
+                                var platformversion = self.core.getAttribute(acq_node, 'platformversion');
+                                analyticsModel.dataAnalyticsModel.platformVersion = platformversion;
+                                self.logger.info(platformversion);
 
                             }
                             var acq_path = self.core.getChildrenPaths(dstNode);

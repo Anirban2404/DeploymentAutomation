@@ -11,10 +11,12 @@ define([], function () {
             var hostip = readJSON['dataAnalyticsModel']['host_ip'];
             var srcPath = readJSON['dataAnalyticsModel']['srcPath'];
             var analyticsEngine = readJSON['dataAnalyticsModel']['analyticsEngine'];
+            console.log(analyticsEngine);
             var ostype = readJSON['dataAnalyticsModel']['OS']['name'];
             var osversion = readJSON['dataAnalyticsModel']['OS']['version'];
             var jupyter = readJSON['dataAnalyticsModel']['jupyter'];
-
+            var platformVersion = readJSON['dataAnalyticsModel']['platformVersion'];
+            var called = false;
             console.log(jupyter);
 
             // MySQL driver
@@ -73,9 +75,16 @@ define([], function () {
             var hostfile = scriptdir + '/' + 'hosts';
             console.log(hostfile);
 
-            var hostContent = "[appserver]\n";
-            hostContent += hostip;
-            hostContent += " ansible_connection=ssh ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python\n";
+            if (platformVersion == "python3") {
+                var hostContent = "[appserver]\n";
+                hostContent += hostip;
+                hostContent += " ansible_connection=ssh ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3\n";
+            }
+            else {
+                var hostContent = "[appserver]\n";
+                hostContent += hostip;
+                hostContent += " ansible_connection=ssh ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python\n";
+            }
             //console.log (hostContent);
             if (fs.exists(hostfile)) {
                 console.log("The host file is appending..!");
@@ -109,6 +118,24 @@ define([], function () {
                 var siteTemp = fs.readFileSync(siteTempfile, 'utf8');
 
                 fs.writeFileSync(deployFile, siteTemp);
+
+                if (platformVersion == "python3") {
+                    replace({
+                        regex: "python2",
+                        replacement: "python3",
+                        paths: [deployFile],
+                        recursive: true,
+                        silent: true,
+                    });
+                    replace({
+                        regex: "python-minimal",
+                        replacement: "python3",
+                        paths: [deployFile],
+                        recursive: true,
+                        silent: true,
+                    });
+                }
+
             }
 
             var chnghostip = "ubuntu@" + hostip;
@@ -179,115 +206,251 @@ define([], function () {
             //language
             fs.writeFileSync(mainTaskFile, "---\n");
 
-            console.log(analyticsEngine.toLowerCase());
-            if (analyticsEngine.toLowerCase() == "scikitlearn") {
-                var scikit_sql = "SELECT b.pkg_name FROM softwaredependency.packages b ,softwaredependency.swdependency a where b.app_id=a.id and a.AppType='" + analyticsEngine.toLowerCase() + "'";
-                scikit_sql += "and b.sw_id in (select app_sw_id FROM softwaredependency.os_dependency where os_id in (SELECT id FROM softwaredependency.os_pkg_mgr ";
-                scikit_sql += "where concat(OS_type,OS_version) = '" + ostype + osversion + "'))";
-                console.log(scikit_sql);
-                var install_analyticsEngine = "- include: install_" + analyticsEngine.toLowerCase() + ".yml\n";
 
-                fs.appendFileSync(mainTaskFile, install_analyticsEngine);
-                console.log(install_analyticsEngine);
+            console.log(analyticsEngine.length);
+            for (var i = 0; i < analyticsEngine.length; i++) {
+                console.log(analyticsEngine[i].toLowerCase());
+                console.log(i);
+                if (analyticsEngine[i].toLowerCase() == "scikitlearn") {
+                    var scikit_sql = "SELECT b.pkg_name FROM softwaredependency.packages b ,softwaredependency.swdependency a where b.app_id=a.id and a.AppType='" + analyticsEngine[i].toLowerCase() + "'";
+                    scikit_sql += "and b.sw_id in (select app_sw_id FROM softwaredependency.os_dependency where os_id in (SELECT id FROM softwaredependency.os_pkg_mgr ";
+                    scikit_sql += "where concat(OS_type,OS_version) = '" + ostype + osversion + "'))";
+                    console.log(scikit_sql);
+                    var install_analyticsEngine = "- include: install_" + analyticsEngine[i].toLowerCase() + ".yml\n";
 
-                var ubuntu_pkg_vars = "\n\n      ubuntu_" + analyticsEngine.toLowerCase() + "_pkgs:\n";
-                ubuntu_pkg_vars += "        <<packages>>"
-                fs.appendFileSync(analyticsAppdeployFile, ubuntu_pkg_vars);
-                console.log(analyticsAppdeployFile);
-                var pkg_result = "";
-                var replace = require("replace");
-                var sleep = require('sleep');
-                analyticspool.on('acquire', function (connection) {
-                    console.log('Connection %d acquired', connection.threadId);
-                });
+                    fs.appendFileSync(mainTaskFile, install_analyticsEngine);
+                    console.log(install_analyticsEngine);
 
-
-                function analyticshandleDisconnect() {
-                    // Query the DataBase
-                    analyticspool.getConnection(function (err, connection) {
-                        console.log("analyticspool connecting...");
-                        sleep.sleep(1);
-                        if (err) {
-                            console.log(err);
-                            //connection.release();
-                            setTimeout(analyticshandleDisconnect, 2000);
-                        }
-                        else {
-                            connection.query(scikit_sql, function (err, rows) {
-                                connection.release();
-
-                                if (err) {
-                                    console.error('error running query', err);
-                                    setTimeout(analyticshandleDisconnect, 2000);
-                                } else {
-                                    console.log("analyticspool connected...");
-                                    console.log(rows);
-                                    for (var row in rows) {
-                                        var rowResult = "         - " + rows[row].pkg_name;
-                                        console.log(rowResult);
-                                        pkg_result += rowResult + "\n";
-                                    }
-                                    if (pkg_result.length > 0) {
-                                        replace({
-                                            regex: "        <<packages>>",
-                                            replacement: pkg_result,
-                                            paths: [analyticsAppdeployFile],
-                                            recursive: true,
-                                            silent: true,
-                                        });
-                                        if (jupyter === false)
-                                            callback();
-                                        else
-                                            jupytercallback();
-                                    }
-                                }
-                            });
-
-                        }
+                    var ubuntu_pkg_vars = "\n\n      ubuntu_" + analyticsEngine[i].toLowerCase() + "_pkgs:\n";
+                    ubuntu_pkg_vars += "        <<packages>>"
+                    fs.appendFileSync(analyticsAppdeployFile, ubuntu_pkg_vars);
+                    console.log(analyticsAppdeployFile);
+                    var pkg_result = "";
+                    var replace = require("replace");
+                    var sleep = require('sleep');
+                    analyticspool.on('acquire', function (connection) {
+                        console.log('Connection %d acquired', connection.threadId);
                     });
+
+
+                    function analyticshandleDisconnect() {
+                        // Query the DataBase
+                        analyticspool.getConnection(function (err, connection) {
+                            console.log("analyticspool connecting...");
+                            sleep.sleep(1);
+                            if (err) {
+                                console.log(err);
+                                //connection.release();
+                                setTimeout(analyticshandleDisconnect, 2000);
+                            }
+                            else {
+                                connection.query(scikit_sql, function (err, rows) {
+                                    connection.release();
+
+                                    if (err) {
+                                        console.error('error running query', err);
+                                        setTimeout(analyticshandleDisconnect, 2000);
+                                    } else {
+                                        console.log("analyticspool connected...");
+                                        console.log(rows);
+                                        for (var row in rows) {
+                                            var rowResult = "         - " + rows[row].pkg_name;
+                                            console.log(rowResult);
+                                            pkg_result += rowResult + "\n";
+                                        }
+                                        if (pkg_result.length > 0) {
+                                            replace({
+                                                regex: "        <<packages>>",
+                                                replacement: pkg_result,
+                                                paths: [analyticsAppdeployFile],
+                                                recursive: true,
+                                                silent: true,
+                                            });
+                                            if (platformVersion == "python3" && called === false) {
+                                                replace({
+                                                    regex: "python",
+                                                    replacement: "python3",
+                                                    paths: [analyticsAppdeployFile],
+                                                    recursive: true,
+                                                    silent: true,
+                                                });
+                                            }
+                                            if (jupyter === false)
+                                                callback();
+                                            else if (called === false) {
+                                                jupytercallback();
+                                                called = true;
+                                            }
+
+                                        }
+                                    }
+                                });
+
+                            }
+                        });
+                    }
+
+                    analyticshandleDisconnect();
+
+                    console.log(ostype + osversion);
+                    var scikitTempFile;
+                    // if ((ostype + osversion).toLowerCase() === "ubuntu16.04")
+                    scikitTempFile = deploydir + "/templates/scikitTemp";
+                    // else if ((ostype + osversion).toLowerCase() === "ubuntu14.04")
+                    //     mysqlTempFile = deploydir + "/templates/PHP14Temp";
+                    console.log(scikitTempFile);
+                    //Read the header file
+                    var scikitTemp = fs.readFileSync(scikitTempFile, 'utf8');
+
+                    // Creating Task file
+                    var scikitTaskFile = roleTaskDir + "/" + "install_" + analyticsEngine[i].toLowerCase() + ".yml";
+                    console.log(scikitTaskFile);
+                    fs.writeFile(scikitTaskFile, scikitTemp, function (err) {
+                        if (err) {
+                            return console.log(err);
+                        }
+
+                        console.log("The scikit file was generated!");
+                    });
+
+                    var copyCode = "- include: copy_code.yml\n";
+                    fs.appendFileSync(mainTaskFile, copyCode);
+                    //Read the header file
+                    var copyTempfile = deploydir + "/templates/copy_code_Scikit";
+                    var copyTemp = fs.readFileSync(copyTempfile, 'utf8');
+                    // Creating Copy-code file
+                    var copyTaskFile = roleTaskDir + "/" + "copy_code.yml";
+                    console.log(copyTaskFile);
+                    fs.writeFile(copyTaskFile, copyTemp, function (err) {
+                        if (err) {
+                            return console.log(err);
+                        }
+
+                        console.log("The copy file was generated!");
+                    });
+
                 }
 
-                analyticshandleDisconnect();
+                if (analyticsEngine[i].toLowerCase() == "tensorflow") {
+                    var tensorflow_sql = "SELECT b.pkg_name FROM softwaredependency.packages b ,softwaredependency.swdependency a where b.app_id=a.id and a.AppType='" + analyticsEngine[i].toLowerCase() + "'";
+                    tensorflow_sql += "and b.sw_id in (select app_sw_id FROM softwaredependency.os_dependency where os_id in (SELECT id FROM softwaredependency.os_pkg_mgr ";
+                    tensorflow_sql += "where concat(OS_type,OS_version) = '" + ostype + osversion + "'))";
+                    console.log(tensorflow_sql);
+                    var install_analyticsEngine = "- include: install_" + analyticsEngine[i].toLowerCase() + ".yml\n";
 
-                console.log(ostype + osversion);
-                var scikitTempFile;
-                // if ((ostype + osversion).toLowerCase() === "ubuntu16.04")
-                scikitTempFile = deploydir + "/templates/scikitTemp";
-                // else if ((ostype + osversion).toLowerCase() === "ubuntu14.04")
-                //     mysqlTempFile = deploydir + "/templates/PHP14Temp";
-                console.log(scikitTempFile);
-                //Read the header file
-                var scikitTemp = fs.readFileSync(scikitTempFile, 'utf8');
+                    fs.appendFileSync(mainTaskFile, install_analyticsEngine);
+                    console.log(mainTaskFile);
+                    console.log(install_analyticsEngine);
 
-                // Creating Task file
-                var scikitTaskFile = roleTaskDir + "/" + "install_" + analyticsEngine.toLowerCase() + ".yml";
-                console.log(scikitTaskFile);
-                fs.writeFile(scikitTaskFile, scikitTemp, function (err) {
-                    if (err) {
-                        return console.log(err);
+                    var ubuntu_pkg_vars = "\n\n      ubuntu_" + analyticsEngine[i].toLowerCase() + "_pkgs:\n";
+                    ubuntu_pkg_vars += "        <<packages>>"
+                    fs.appendFileSync(analyticsAppdeployFile, ubuntu_pkg_vars);
+                    console.log(analyticsAppdeployFile);
+                    var pkg_result = "";
+                    var replace = require("replace");
+                    var sleep = require('sleep');
+                    analyticspool.on('acquire', function (connection) {
+                        console.log('Connection %d acquired', connection.threadId);
+                    });
+
+
+                    function analyticshandleDisconnect() {
+                        // Query the DataBase
+                        analyticspool.getConnection(function (err, connection) {
+                            console.log("analyticspool connecting...");
+                            sleep.sleep(1);
+                            if (err) {
+                                console.log(err);
+                                //connection.release();
+                                setTimeout(analyticshandleDisconnect, 2000);
+                            }
+                            else {
+                                connection.query(tensorflow_sql, function (err, rows) {
+                                    connection.release();
+
+                                    if (err) {
+                                        console.error('error running query', err);
+                                        setTimeout(analyticshandleDisconnect, 2000);
+                                    } else {
+                                        console.log("analyticspool connected...");
+                                        console.log(rows);
+                                        for (var row in rows) {
+                                            var rowResult = "         - " + rows[row].pkg_name;
+                                            console.log(rowResult);
+                                            pkg_result += rowResult + "\n";
+                                        }
+                                        if (pkg_result.length > 0) {
+                                            replace({
+                                                regex: "        <<packages>>",
+                                                replacement: pkg_result,
+                                                paths: [analyticsAppdeployFile],
+                                                recursive: true,
+                                                silent: true,
+                                            });
+                                            if (platformVersion == "python3" && called === false) {
+                                                replace({
+                                                    regex: "python",
+                                                    replacement: "python3",
+                                                    paths: [analyticsAppdeployFile],
+                                                    recursive: true,
+                                                    silent: true,
+                                                });
+                                            }
+                                            if (jupyter === false)
+                                                callback();
+                                            else if (called === false) {
+                                                jupytercallback();
+                                                called = true;
+                                            }
+                                        }
+                                    }
+                                });
+
+                            }
+                        });
                     }
 
-                    console.log("The scikit file was generated!");
-                });
+                    analyticshandleDisconnect();
 
-                var copyCode = "- include: copy_code.yml\n";
-                fs.appendFileSync(mainTaskFile, copyCode);
-                //Read the header file
-                var copyTempfile = deploydir + "/templates/copy_code_Scikit";
-                var copyTemp = fs.readFileSync(copyTempfile, 'utf8');
-                // Creating Copy-code file
-                var copyTaskFile = roleTaskDir + "/" + "copy_code.yml";
-                console.log(copyTaskFile);
-                fs.writeFile(copyTaskFile, copyTemp, function (err) {
-                    if (err) {
-                        return console.log(err);
-                    }
+                    console.log(ostype + osversion);
+                    var tensorflowTempFile;
+                    // if ((ostype + osversion).toLowerCase() === "ubuntu16.04")
+                    tensorflowTempFile = deploydir + "/templates/tensorflowTemp";
+                    // else if ((ostype + osversion).toLowerCase() === "ubuntu14.04")
+                    //     mysqlTempFile = deploydir + "/templates/PHP14Temp";
+                    console.log(tensorflowTempFile);
+                    //Read the header file
+                    var tensorflowTemp = fs.readFileSync(tensorflowTempFile, 'utf8');
 
-                    console.log("The copy file was generated!");
-                });
+                    // Creating Task file
+                    var tensorflowTaskFile = roleTaskDir + "/" + "install_" + analyticsEngine[i].toLowerCase() + ".yml";
+                    console.log(tensorflowTaskFile);
+                    fs.writeFile(tensorflowTaskFile, tensorflowTemp, function (err) {
+                        if (err) {
+                            return console.log(err);
+                        }
 
+                        console.log("The tensorflow file was generated!");
+                    });
+
+                    var copyCode = "- include: copy_code.yml\n";
+                    fs.appendFileSync(mainTaskFile, copyCode);
+                    //Read the header file
+                    var copyTempfile = deploydir + "/templates/copy_code_Scikit";
+                    var copyTemp = fs.readFileSync(copyTempfile, 'utf8');
+                    // Creating Copy-code file
+                    var copyTaskFile = roleTaskDir + "/" + "copy_code.yml";
+                    console.log(copyTaskFile);
+                    fs.writeFile(copyTaskFile, copyTemp, function (err) {
+                        if (err) {
+                            return console.log(err);
+                        }
+
+                        console.log("The copy file was generated!");
+                    });
+
+                }
             }
-
 
             var roles = "\n\n  roles:\n";
             roles += "    - " + name;
@@ -434,6 +597,15 @@ define([], function () {
                     }
 
                     console.log("The scikit file was generated!");
+                    if (platformVersion == "python3") {
+                        replace({
+                            regex: "python",
+                            replacement: "python3",
+                            paths: [jupyterTaskFile],
+                            recursive: true,
+                            silent: true,
+                        });
+                    }
                 });
 
                 var juproles = "\n\n  roles:\n";
@@ -453,23 +625,25 @@ define([], function () {
                 //exec(command);
                 var sshCmd = "ssh ubuntu@" + hostip + " echo 'hello'";
                 console.log(sshCmd);
+
+
                 // analyticspool.end();
                 // while (true) {
                 var hello = shell.exec(sshCmd).stdout;
                 // console.log(hello);
+
                 var runjupyterNotebook = "ssh ubuntu@" + hostip + " jupyter notebook";
+                var decoratorFix = "ssh ubuntu@" + hostip + " sudo apt install --reinstall python" + "\\*-decorator";
+                console.log(decoratorFix);
                 if (hello === 'hello\n') {
                     console.log("hello");
-
-
                     shell.exec(command);
-
-
                     //break;
                 }
                 else
                     setTimeout(callback, 30000);
                 // }
+                shell.exec(decoratorFix).stdout;
                 shell.exec(runjupyterNotebook).stdout;
             }
         }
