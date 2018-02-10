@@ -637,7 +637,7 @@ define([], function () {
                 console.log(decoratorFix);
                 if (hello === 'hello\n') {
                     console.log("hello");
-                    shell.exec(command);
+                    shell.exec(command, {async:true});
                     //break;
                 }
                 else

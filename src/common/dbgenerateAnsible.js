@@ -541,7 +541,7 @@ define([], function () {
             // });
 
             var cp = require('shelljs');
-            var command = "ansible-playbook " + deployFile;
+            var command = "nohup ansible-playbook " + deployFile + " &";
             console.log(command);
             var exec = cp.exec;
 
@@ -552,7 +552,7 @@ define([], function () {
                 sleep.sleep(1);
                 var shell = require('shelljs');
                 shell.cd(scriptdir);
-                var command = "ansible-playbook " + deployFile;
+                var command = "nohup ansible-playbook " + deployFile + " &";
                 var exec = shell.exec;
                 console.log(command);
                 //exec(command);
@@ -565,7 +565,8 @@ define([], function () {
 
                 if (hello === 'hello\n') {
                     console.log("hello");
-                    exec(command);
+                    exec(command, {async:true});
+                    console.log("done");
                     //break;
                 }
                 else

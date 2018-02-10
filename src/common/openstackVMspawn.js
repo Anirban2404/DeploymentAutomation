@@ -34,12 +34,12 @@ define([], function() {
             var shell = require('shelljs');
             var sleep = require('sleep');
 
-            var command = "ansible-playbook ";
+            var command = "nohup ansible-playbook ";
 
             command += "src/plugins/ansibleVMspawn/openstackVMspawnfp.yml ";
             // command += "src/plugins/ansibleVMspawn/openstackVMspawn.yml ";
             command += "--extra-vars ";
-            command += '" ' + variables + ' "';
+            command += '" ' + variables + ' " &';
             console.log(command);
             console.log(command.length);
             var fs = require('fs');

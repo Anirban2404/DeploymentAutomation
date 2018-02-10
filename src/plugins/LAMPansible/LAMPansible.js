@@ -74,6 +74,9 @@ define([
     LAMPansible.prototype.extractModel = function (callback) {
         var self = this;
         //this.pathToNode={};
+        // Define various Application model
+
+        // Datamodel for the web application
         var webModel =
             {
                 WebApplicationModel: {
@@ -90,6 +93,7 @@ define([
                 }
             };
 
+        // Datamodel for the Database application
         var dbModel =
             {
                 DBApplicationModel: {
@@ -111,6 +115,7 @@ define([
                 }
             };
 
+        // Datamodel for the Data Analytics application
         var analyticsModel =
             {
                 dataAnalyticsModel: {
@@ -133,7 +138,7 @@ define([
 
         //this.logger.info (this.core.getAttribute(this.activeNode, 'name'));
 
-        // In order to avoid multiple iterative asynchronous 'load' calls we pre-load all the nodes in the state-machine
+        // In order to avoid multiple iterative asynchronous 'load' calls we pre-load all the nodes in CloudCAMP
         // and builds up a local hash-map from their paths to the node.
         return this.core.loadSubTree(self.activeNode)
             .then(function (nodes) {
@@ -150,14 +155,19 @@ define([
                     self.pathToNode[self.core.getPath(nodes[i])] = nodes[i];
                 }
 
+                // Define all the Application component specific dependency
                 var dbdependendency = false;
                 var webdependent = false;
                 var jupyterdependendency = false;
+
+
                 childrenPaths = self.core.getChildrenPaths(self.activeNode);
                 // console.log(childrenPaths.length);
                 for (i = 0; i < childrenPaths.length; i += 1) {
 
                     childNode = self.pathToNode[childrenPaths[i]];
+
+                    // Find the connected nodes and check if the connection dependency is "ConnectsTo"
                     if (self.isMetaTypeOf(childNode, self.META['ConnectsTo']) === true) {
                         childName = self.core.getAttribute(childNode, 'name');
                         self.logger.info('At childNode', childName);
@@ -196,6 +206,8 @@ define([
                 // sleep.sleep(5);
                 for (i = 0; i < childrenPaths.length; i += 1) {
                     childNode = self.pathToNode[childrenPaths[i]];
+
+                    // Check if the connection dependency is "HostedOn"
                     if (self.isMetaTypeOf(childNode, self.META['HostedOn']) === true) {
                         childName = self.core.getAttribute(childNode, 'name');
                         self.logger.info('At childNode', childName);
@@ -220,6 +232,8 @@ define([
                         // self.logger.info('At srcNode', src_node);
                         var dst_node = self.core.getAttribute(dstNode, 'name');
                         // self.logger.info('At dstNode', dst_node);
+
+                        // Read and load Web Application Model
                         if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true && self.isMetaTypeOf(dstNode, self.META['Hardware']) === true) {
                             webModel.WebApplicationModel.AppType = 'WebApplication';
                             var language = self.core.getAttribute(srcNode, 'language');
@@ -262,6 +276,7 @@ define([
                         }
 
 
+                        // Read and load Database Application Model
                         if (self.isMetaTypeOf(srcNode, self.META['DBApplication']) === true && self.isMetaTypeOf(dstNode, self.META['Hardware']) === true) {
                             dbModel.DBApplicationModel.AppType = 'DBApplication';
 
@@ -295,8 +310,8 @@ define([
                                 var dbEngine = self.core.getAttribute(acq_node, 'name');
                                 dbModel.DBApplicationModel.dbEngine = dbEngine;
                                 self.logger.info(dbEngine);
-
                             }
+
                             var acq_path = self.core.getChildrenPaths(dstNode);
                             for (j = 0; j < acq_path.length; j += 1) {
                                 acq_node = self.pathToNode[acq_path[j]];
@@ -314,7 +329,7 @@ define([
                                 self.logger.error(" Calling webAnsible..");
                                 dbdependendency = false;
                                 //sleep.sleep(5);
-                                webAnsible.webgenerateAnsible(JSON.stringify(webModel, null, 4));
+                                //webAnsible.webgenerateAnsible(JSON.stringify(webModel, null, 4));
                             }
 
                         }

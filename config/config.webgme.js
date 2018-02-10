@@ -10,6 +10,7 @@ var config = require('webgme/config/config.default'),
 config.plugin.basePaths.push(__dirname + '/../src/plugins');
 config.plugin.basePaths.push(__dirname + '/../node_modules/webgme-constraint-checker/src/plugins');
 config.visualization.decoratorPaths.push(__dirname + '/../src/decorators');
+config.seedProjects.basePaths.push(__dirname + '/../src/seeds/DeploymentAutomation');
 
 
 
