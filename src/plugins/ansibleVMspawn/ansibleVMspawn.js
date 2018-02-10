@@ -13,13 +13,15 @@ define([
     'plugin/PluginBase',
     'cloudcamp/openstackVMspawn',
     'cloudcamp/webgenerateAnsible',
-    'cloudcamp/dbgenerateAnsible'
+    'cloudcamp/dbgenerateAnsible',
+    'cloudcamp/dataanalyticsgenerateAnsible'
 ], function (PluginConfig,
              pluginMetadata,
              PluginBase,
              openstackVMspawn,
              webAnsible,
-             dbAnsible) {
+             dbAnsible,
+             analyticsAnsible) {
     'use strict';
 
     pluginMetadata = JSON.parse(pluginMetadata);
@@ -160,6 +162,25 @@ define([
                 }
             };
 
+        var analyticsModel =
+            {
+                dataAnalyticsModel: {
+                    AppType: "",
+                    AppName: "",
+                    host_ip: "",
+                    srcPath: "",
+                    replication_count: "",
+                    analyticsEngine: [],
+                    platformVersion: "",
+                    jupyter: "",
+                    OS: {
+                        name: "",
+                        version: ""
+                    }
+
+                }
+            };
+
         // In order to avoid multiple iterative asynchronous 'load' calls we pre-load all the nodes in the state-machine
         // and builds up a local hash-map from their paths to the node.
         return this.core.loadSubTree(self.activeNode)
@@ -176,6 +197,7 @@ define([
                 var srcNodes = [];
                 var dbdependendency = false;
                 var webdependent = false;
+                var jupyterdependendency = false;
                 var childrenPaths = self.core.getChildrenPaths(self.activeNode);
                 // console.log(childrenPaths.length);
                 for (i = 0; i < childrenPaths.length; i += 1) {
@@ -200,14 +222,24 @@ define([
                             self.logger.info('-->');
                             self.logger.info(self.core.getAttribute(dstNode, 'name'));
                         }
+
+                        // Add the logic if you have ConnectsTo relationship
                         if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true && self.isMetaTypeOf(dstNode, self.META['DBApplication']) === true) {
                             self.logger.error("DB");
                             dbdependendency = true;
                             webdependent = true;
 
                         }
-                    }
 
+                        if (self.isMetaTypeOf(srcNode, self.META['Jupyter']) === true && self.isMetaTypeOf(dstNode, self.META['DataAnalyticsApp']) === true) {
+                            self.logger.error("Jupyter");
+                            jupyterdependendency = true;
+                            analyticsModel.dataAnalyticsModel.jupyter = true;
+                        }
+                    }
+                }
+                for (i = 0; i < childrenPaths.length; i += 1) {
+                    var childNode = self.pathToNode[childrenPaths[i]];
                     if (self.isMetaTypeOf(childNode, self.META['HostedOn']) === true) {
                         var childName = self.core.getAttribute(childNode, 'name');
                         // self.logger.info('At childNode', childName);
@@ -237,6 +269,8 @@ define([
                             srcNodes.push('WebApplication');
                         else if (self.isMetaTypeOf(srcNode, self.META['DBApplication']) === true)
                             srcNodes.push('DBApplication');
+                        else if (self.isMetaTypeOf(srcNode, self.META['DataAnalyticsApp']) === true)
+                            srcNodes.push('DataAnalyticsApp');
 
                         var dst_node = self.core.getAttribute(dstNode, 'name');
                         // self.logger.info('At dstNode', dst_node);
@@ -351,6 +385,44 @@ define([
 
                             }
 
+                            if (self.isMetaTypeOf(srcNode, self.META['DataAnalyticsApp']) === true) {
+                                analyticsModel.dataAnalyticsModel.AppType = 'DataAnalyticsApp';
+
+                                var appName = self.core.getAttribute(srcNode, 'name');
+                                analyticsModel.dataAnalyticsModel.AppName = appName;
+                                self.logger.info(appName);
+                                var srcPath = self.core.getAttribute(srcNode, 'src');
+                                analyticsModel.dataAnalyticsModel.srcPath = srcPath;
+                                self.logger.info(srcPath);
+
+                                var acq_path = self.core.getChildrenPaths(srcNode);
+                                for (j = 0; j < acq_path.length; j += 1) {
+                                    acq_node = self.pathToNode[acq_path[j]];
+                                    var analyticsEngine = self.core.getAttribute(acq_node, 'name');
+                                    analyticsModel.dataAnalyticsModel.analyticsEngine[j] = analyticsEngine;
+                                    self.logger.info(analyticsEngine);
+
+
+                                    var platformversion = self.core.getAttribute(acq_node, 'platformversion');
+                                    analyticsModel.dataAnalyticsModel.platformVersion = platformversion;
+                                    self.logger.info(platformversion);
+
+                                }
+
+                                var acq_path = self.core.getChildrenPaths(dstNode);
+                                for (j = 0; j < acq_path.length; j += 1) {
+                                    acq_node = self.pathToNode[acq_path[j]];
+                                    var os_name = self.core.getAttribute(acq_node, 'name');
+                                    analyticsModel.dataAnalyticsModel.OS.name = os_name;
+                                    self.logger.info(os_name);
+                                    var os_version = self.core.getAttribute(acq_node, 'version');
+                                    analyticsModel.dataAnalyticsModel.OS.version = os_version;
+                                    self.logger.info(os_version);
+                                }
+
+                            }
+
+
                             var fs = require('fs');
                             var sleep = require('sleep');
                             // var hostTempfile = "src/plugins/ansibleVMspawn/hostTemp" + vmName;
@@ -375,12 +447,13 @@ define([
                             console.log(dstNodes);
                             var w_visited = false;
                             var d_visited = false;
+                            var da_visited = false;
                             console.log(srcNodes);
 
 
                             var sync = require('synchronize');
                             for (var tnodes = 0; tnodes < dstNodes.length; tnodes++) {
-                                // sleep.sleep(5);
+                                sleep.sleep(5);
                                 var hostTempfile = "src/plugins/ansibleVMspawn/hostTemp" + dstNodes[tnodes];
                                 console.log(map.get(dstNodes[tnodes]), "--->", dstNodes[tnodes]);
 
@@ -420,7 +493,11 @@ define([
                                                 console.log("+++++++++++++++src/plugins/ansibleVMspawn/hostTemp" + vmName);
                                                 console.log(JSON.stringify(webModel, null, 4));
                                                 sleep.sleep(5);
-                                                webAnsible.webgenerateAnsible(JSON.stringify(webModel, null, 4));
+                                                //webAnsible.webgenerateAnsible(JSON.stringify(webModel, null, 4));
+                                                if (dbdependendency === false) {
+                                                    self.logger.error(" Run webAnsible..");
+                                                    webAnsible.webgenerateAnsible(JSON.stringify(webModel, null, 4));
+                                                }
                                             }
 
 
@@ -436,7 +513,40 @@ define([
                                                 console.log("+++++++++++++++src/plugins/ansibleVMspawn/hostTemp" + vmName);
                                                 console.log(JSON.stringify(dbModel, null, 4));
                                                 sleep.sleep(2);
+                                                //dbAnsible.dbgenerateAnsible(JSON.stringify(dbModel, null, 4));
                                                 dbAnsible.dbgenerateAnsible(JSON.stringify(dbModel, null, 4));
+                                                if (webdependent === true) {
+                                                    self.logger.error(" Calling webAnsible..");
+                                                    dbdependendency = false;
+                                                    sleep.sleep(5);
+                                                    webAnsible.webgenerateAnsible(JSON.stringify(webModel, null, 4));
+                                                }
+                                            }
+
+                                            if ((analyticsModel.dataAnalyticsModel.AppType === 'DataAnalyticsApp')
+                                                && (analyticsModel.dataAnalyticsModel.AppName.trim() === connectedNode) && da_visited === false) {
+                                                console.log(connectedNode, "%%%%%%%%", reader);
+                                                da_visited = true;
+                                                var host_ip = self.core.getAttribute(dstNode, 'host_ip');
+                                                // console.log(reader.trim());
+                                                analyticsModel.dataAnalyticsModel.host_ip = reader;
+                                                // self.logger.info(host_ip);
+                                                console.log("+++++++++++++++src/plugins/ansibleVMspawn/hostTemp" + vmName);
+                                                console.log(JSON.stringify(analyticsModel, null, 4));
+                                                sleep.sleep(1);
+
+                                                if (jupyterdependendency === true) {
+                                                    self.logger.error(" Calling Jupyter..");
+
+                                                    //sleep.sleep(5);
+                                                    analyticsAnsible.analyticsgenerateAnsible(JSON.stringify(analyticsModel, null, 4));
+                                                    jupyterdependendency = false;
+                                                }
+                                                else {
+
+                                                    analyticsModel.dataAnalyticsModel.jupyter = false;
+                                                    analyticsAnsible.analyticsgenerateAnsible(JSON.stringify(analyticsModel, null, 4));
+                                                }
                                             }
                                         }
                                     });

@@ -32,7 +32,12 @@
         "src": "src/decorators/openStackDecorator"
       }
     },
-    "routers": {}
+    "routers": {},
+    "seeds": {
+      "DeploymentAutomation": {
+        "src": "src/seeds/DeploymentAutomation"
+      }
+    }
   },
   "dependencies": {
     "plugins": {
@@ -82,6 +87,7 @@
         "path": "node_modules/webgme-constraint-checker/src/routers/ConstraintResults",
         "mount": "routers/ConstraintResults"
       }
-    }
+    },
+    "seeds": {}
   }
 }

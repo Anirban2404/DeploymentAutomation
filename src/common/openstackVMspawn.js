@@ -34,15 +34,16 @@ define([], function() {
             var shell = require('shelljs');
             var sleep = require('sleep');
 
-            var command = "ansible-playbook ";
+            var command = "nohup ansible-playbook ";
 
             command += "src/plugins/ansibleVMspawn/openstackVMspawnfp.yml ";
+            // command += "src/plugins/ansibleVMspawn/openstackVMspawn.yml ";
             command += "--extra-vars ";
-            command += '" ' + variables + ' "';
+            command += '" ' + variables + ' " &';
             console.log(command);
             console.log(command.length);
             var fs = require('fs');
-            //var openstack_ip = "openstack server list --name " + vmName + "| grep " + network +  "| awk '{print $8}'| awk -F'=' '{print $2}' > src/plugins/ansibleVMspawn/hostTemp"+vmName;
+            // var openstack_ip = "openstack server list --name " + vmName + "| grep " + network +  "| awk '{print $8}'| awk -F'=' '{print $2}' > src/plugins/ansibleVMspawn/hostTemp"+vmName;
             var openstack_ip = "openstack server list --name " + vmName + "| grep " + network + "| awk \'{print $9}\'| tail -2 > src/plugins/ansibleVMspawn/hostTemp" + vmName;
 
             // console.log(openstack_ip);

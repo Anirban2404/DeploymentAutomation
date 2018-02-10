@@ -233,14 +233,15 @@ define([], function () {
                         sleep.sleep(1);
                         if (err) {
                             console.log(err);
-                            connection.release();
-                            sqlhandleDisconnect();
+                            //connection.release();
+                            setTimeout(sqlhandleDisconnect, 2000);
                         }
                         else {
                             connection.query(sql, function (err, rows) {
                                 connection.release();
                                 if (err) {
                                     console.error('error running query', err);
+                                    setTimeout(sqlhandleDisconnect, 2000);
                                 } else {
                                     console.log("DBpool connected...");
                                     // console.log(rows);
@@ -403,7 +404,6 @@ define([], function () {
                 console.log(install_dbEngine);
 
 
-
                 var mongoconf = "\n      mongo_port: " + port + "\n"; //270717
                 mongoconf += "      mongo_bind_address: \"0.0.0.0\" \n" //#Change it to 0.0.0.0,if you want to listen everywhere\n";
                 mongoconf += "      mongo_user: " + dbuser + "\n"; //root\n";
@@ -541,7 +541,7 @@ define([], function () {
             // });
 
             var cp = require('shelljs');
-            var command = "ansible-playbook " + deployFile;
+            var command = "nohup ansible-playbook " + deployFile + " &";
             console.log(command);
             var exec = cp.exec;
 
@@ -552,24 +552,27 @@ define([], function () {
                 sleep.sleep(1);
                 var shell = require('shelljs');
                 shell.cd(scriptdir);
-                var command = "ansible-playbook " + deployFile;
+                var command = "nohup ansible-playbook " + deployFile + " &";
                 var exec = shell.exec;
                 console.log(command);
                 //exec(command);
                 var sshCmd = "ssh ubuntu@" + hostip + " echo 'hello'";
                 console.log(sshCmd);
                 // dbpool.end();
-                while (true) {
-                    var hello = shell.exec(sshCmd).stdout;
-                    // console.log(hello);
+                //while (true) {
+                var hello = shell.exec(sshCmd).stdout;
+                // console.log(hello);
 
-                    if (hello === 'hello\n') {
-                        console.log("hello");
-                        exec(command);
-                        break;
-                    }
-                    sleep.sleep(30);
+                if (hello === 'hello\n') {
+                    console.log("hello");
+                    exec(command, {async:true});
+                    console.log("done");
+                    //break;
                 }
+                else
+                    setTimeout(callback, 30000);
+                //sleep.sleep(30);
+                // }
             }
         }
     }

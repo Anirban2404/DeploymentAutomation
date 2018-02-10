@@ -45,7 +45,7 @@ define(['css!./styles/codeVizualizerWidget.css',
 
         //Notebook
         var notebookIframe = document.createElement('iframe');
-        notebookIframe.name = "notebook";
+        notebookIframe.name = "codeVisualizer";
         notebookIframe.style.height = "100%";
         notebookIframe.style.width = "100%";
         notebookIframe.src = this.getNotebookUrl();
@@ -53,66 +53,6 @@ define(['css!./styles/codeVizualizerWidget.css',
 
         this.notebookIframe = notebookIframe;
 
-        var buttonEdit = document. createElement("button");
-        buttonEdit. innerHTML = "Edit";
-        this._el.append(buttonEdit);
-        // Add event handler
-        buttonEdit.addEventListener ("click", myFunctionEdit);
-        this._el.append(' ');
-        var buttonSave = document. createElement("button");
-        buttonSave. innerHTML = "Save";
-        this._el.append(buttonSave);
-        // Add event handler
-        buttonSave.addEventListener ("click", myFunctionSave);
-
-        // function myFunctionEdit() {
-        //     alert("did Edit");
-        // }
-        // Get the modal
-        var modal = document.getElementById('myModal');
-
-        function myFunctionSave() {
-            modal.style.display = "block";
-        }
-
-        function saveTextAsFile()
-        {
-            var textToSave = document.getElementById("inputTextToSave").value;
-            var textToSaveAsBlob = new Blob([textToSave], {type:"text/plain"});
-            var textToSaveAsURL = window.URL.createObjectURL(textToSaveAsBlob);
-            var fileNameToSaveAs = document.getElementById("inputFileNameToSaveAs").value;
-
-            var downloadLink = document.createElement("a");
-            downloadLink.download = fileNameToSaveAs;
-            downloadLink.innerHTML = "Download File";
-            downloadLink.href = textToSaveAsURL;
-            downloadLink.onclick = destroyClickedElement;
-            downloadLink.style.display = "none";
-            document.body.appendChild(downloadLink);
-
-            downloadLink.click();
-        }
-
-
-        function myFunctionEdit()
-        {
-            var fileToLoad = document.getElementById("fileToLoad").files[0];
-            var fileReader = new FileReader();
-            fileReader.onload = function(fileLoadedEvent)
-            {
-                var textFromFileLoaded = fileLoadedEvent.target.result;
-                document.getElementById("inputTextToSave").value = textFromFileLoaded;
-            };
-            fileReader.readAsText(fileToLoad, "UTF-8");
-        }
-
-        this.$el.append('<br>');
-        this._skinParts.$EqnEditorBtn = EQN_EDIT_BTN_BASE.clone();
-        this.$el.append(this._skinParts.$EqnEditorBtn);
-        this.$el.append('  Function');
-        this.$el.append('<br>');
-        this.$el.append(this.$runPluginBtn);
-        this.$el.append('<br>');
         this._checkForResult(client,nodeObj);
     };
 
@@ -121,7 +61,8 @@ define(['css!./styles/codeVizualizerWidget.css',
     };
 
     codeVizualizerWidget.prototype.getNotebookUrl = function (desc) {
-        return "http://129.59.234.224:5556/lockheed/DeploymentAutomation/examples/ansibleScript/WebApplication/";
+        // http-server /root/lockheed/DeploymentAutomation/examples/ -p 5556
+        return "http://129.59.234.224:5556/ansibleScript/";
     };
 
     // Adding/Removing/Updating items

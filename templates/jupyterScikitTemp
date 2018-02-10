@@ -1,0 +1,41 @@
+---
+- name: Install jupyter dependencies
+  apt:
+    name: "{{ item }}"
+    state: latest
+    update_cache: yes
+  with_items: "{{ ubuntu_jupyter_pkgs }}"
+  register: pip
+
+- name: Install Jupyter through pip
+  become: true
+  pip:
+    name: "{{ item }}"
+    state: forcereinstall
+  with_items:
+    - pip
+    - jupyter
+    - watermark
+    
+  when: pip.changed
+  register: jupyter
+
+- name: Generate jupyter config file
+  become: false
+  shell: |
+     jupyter notebook --generate-config
+     python -m pip install --upgrade pip
+     python -m pip install ipykernel
+
+  args:
+    executable: /bin/bash
+  when: jupyter.changed
+  register: config
+
+- name: changing Jupyter config file
+  lineinfile:
+     path: /home/ubuntu/.jupyter/jupyter_notebook_config.py
+     line: |
+         c.NotebookApp.ip = '*'
+         c.NotebookApp.port = 9999
+  when: config.changed

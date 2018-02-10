@@ -19,11 +19,8 @@ config.seedProjects.defaultProject = 'CloudCAMP';
 config.seedProjects.basePaths.push("./src/seeds");
 
 // Add/overwrite any additional settings here
-config.server.port = 8888;
+config.server.port = 8080;
 // config.mongo.uri = 'mongodb://127.0.0.1:27017/webgme_my_app';
-config.authentication.allowUserRegistration = true
-config.authentication.enable = true
-config.authentication.allowGuests = true
 
 // Plugins
 config.plugin.allowServerExecution = true;
@@ -35,7 +32,7 @@ config.webhooks.enable = true;
 //config.visualization.layout.default = 'SidebarLayout';
 config.executor.enable = true;
 config.executor.clearOldDataAtStartUp = true;
-config.visualization.svgDirs = ['./icons'];
+config.visualization.svgDirs = ['/root/lockheed/DeploymentAutomation/deploymentIcons'];
 
 // RequireJS paths
 config.requirejsPaths.cloudcamp = "./src/common/"

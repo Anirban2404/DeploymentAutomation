@@ -12,12 +12,14 @@ define([
     'text!./metadata.json',
     'plugin/PluginBase',
     'cloudcamp/webgenerateAnsible',
-    'cloudcamp/dbgenerateAnsible'
+    'cloudcamp/dbgenerateAnsible',
+    'cloudcamp/dataanalyticsgenerateAnsible'
 ], function (PluginConfig,
              pluginMetadata,
              PluginBase,
              webAnsible,
-             dbAnsible) {
+             dbAnsible,
+             analyticsAnsible) {
     'use strict';
 
     pluginMetadata = JSON.parse(pluginMetadata);
@@ -72,6 +74,9 @@ define([
     LAMPansible.prototype.extractModel = function (callback) {
         var self = this;
         //this.pathToNode={};
+        // Define various Application model
+
+        // Datamodel for the web application
         var webModel =
             {
                 WebApplicationModel: {
@@ -88,6 +93,7 @@ define([
                 }
             };
 
+        // Datamodel for the Database application
         var dbModel =
             {
                 DBApplicationModel: {
@@ -109,10 +115,30 @@ define([
                 }
             };
 
+        // Datamodel for the Data Analytics application
+        var analyticsModel =
+            {
+                dataAnalyticsModel: {
+                    AppType: "",
+                    AppName: "",
+                    host_ip: "",
+                    srcPath: "",
+                    replication_count: "",
+                    analyticsEngine: [],
+                    platformVersion: "",
+                    jupyter: "",
+                    OS: {
+                        name: "",
+                        version: ""
+                    }
+
+                }
+            };
+
 
         //this.logger.info (this.core.getAttribute(this.activeNode, 'name'));
 
-        // In order to avoid multiple iterative asynchronous 'load' calls we pre-load all the nodes in the state-machine
+        // In order to avoid multiple iterative asynchronous 'load' calls we pre-load all the nodes in CloudCAMP
         // and builds up a local hash-map from their paths to the node.
         return this.core.loadSubTree(self.activeNode)
             .then(function (nodes) {
@@ -129,13 +155,19 @@ define([
                     self.pathToNode[self.core.getPath(nodes[i])] = nodes[i];
                 }
 
+                // Define all the Application component specific dependency
                 var dbdependendency = false;
                 var webdependent = false;
+                var jupyterdependendency = false;
+
+
                 childrenPaths = self.core.getChildrenPaths(self.activeNode);
                 // console.log(childrenPaths.length);
                 for (i = 0; i < childrenPaths.length; i += 1) {
 
                     childNode = self.pathToNode[childrenPaths[i]];
+
+                    // Find the connected nodes and check if the connection dependency is "ConnectsTo"
                     if (self.isMetaTypeOf(childNode, self.META['ConnectsTo']) === true) {
                         childName = self.core.getAttribute(childNode, 'name');
                         self.logger.info('At childNode', childName);
@@ -154,14 +186,28 @@ define([
                             self.logger.info('-->');
                             self.logger.info(self.core.getAttribute(dstNode, 'name'));
                         }
-                        if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true && self.isMetaTypeOf(dstNode, self.META['DBApplication']) === true){
+
+                        // Add the logic if you have ConnectsTo relationship
+                        if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true && self.isMetaTypeOf(dstNode, self.META['DBApplication']) === true) {
                             self.logger.error("DB");
                             dbdependendency = true;
                             webdependent = true;
 
                         }
-                    }
+                        if (self.isMetaTypeOf(srcNode, self.META['Jupyter']) === true && self.isMetaTypeOf(dstNode, self.META['DataAnalyticsApp']) === true) {
+                            self.logger.error("Jupyter");
+                            jupyterdependendency = true;
+                            analyticsModel.dataAnalyticsModel.jupyter = true;
+                        }
 
+                    }
+                }
+                // var sleep = require('sleep');
+                // sleep.sleep(5);
+                for (i = 0; i < childrenPaths.length; i += 1) {
+                    childNode = self.pathToNode[childrenPaths[i]];
+
+                    // Check if the connection dependency is "HostedOn"
                     if (self.isMetaTypeOf(childNode, self.META['HostedOn']) === true) {
                         childName = self.core.getAttribute(childNode, 'name');
                         self.logger.info('At childNode', childName);
@@ -186,6 +232,8 @@ define([
                         // self.logger.info('At srcNode', src_node);
                         var dst_node = self.core.getAttribute(dstNode, 'name');
                         // self.logger.info('At dstNode', dst_node);
+
+                        // Read and load Web Application Model
                         if (self.isMetaTypeOf(srcNode, self.META['WebApplication']) === true && self.isMetaTypeOf(dstNode, self.META['Hardware']) === true) {
                             webModel.WebApplicationModel.AppType = 'WebApplication';
                             var language = self.core.getAttribute(srcNode, 'language');
@@ -226,6 +274,9 @@ define([
                                 webAnsible.webgenerateAnsible(JSON.stringify(webModel, null, 4));
                             }
                         }
+
+
+                        // Read and load Database Application Model
                         if (self.isMetaTypeOf(srcNode, self.META['DBApplication']) === true && self.isMetaTypeOf(dstNode, self.META['Hardware']) === true) {
                             dbModel.DBApplicationModel.AppType = 'DBApplication';
 
@@ -259,8 +310,8 @@ define([
                                 var dbEngine = self.core.getAttribute(acq_node, 'name');
                                 dbModel.DBApplicationModel.dbEngine = dbEngine;
                                 self.logger.info(dbEngine);
-
                             }
+
                             var acq_path = self.core.getChildrenPaths(dstNode);
                             for (j = 0; j < acq_path.length; j += 1) {
                                 acq_node = self.pathToNode[acq_path[j]];
@@ -283,13 +334,71 @@ define([
 
                         }
 
+                        // Read and load DataAnalytics Model
+                        if (self.isMetaTypeOf(srcNode, self.META['DataAnalyticsApp']) === true && self.isMetaTypeOf(dstNode, self.META['Hardware']) === true) {
+                            analyticsModel.dataAnalyticsModel.AppType = 'DataAnalyticsApp';
+
+                            var appName = self.core.getAttribute(srcNode, 'name');
+                            analyticsModel.dataAnalyticsModel.AppName = appName;
+                            self.logger.info(appName);
+                            var srcPath = self.core.getAttribute(srcNode, 'src');
+                            analyticsModel.dataAnalyticsModel.srcPath = srcPath;
+                            self.logger.info(srcPath);
+                            var host_ip = self.core.getAttribute(dstNode, 'host_ip');
+                            analyticsModel.dataAnalyticsModel.host_ip = host_ip;
+                            self.logger.info(host_ip);
+
+
+
+                            var acq_path = self.core.getChildrenPaths(srcNode);
+                            for (j = 0; j < acq_path.length; j += 1) {
+                                acq_node = self.pathToNode[acq_path[j]];
+                                var analyticsEngine = self.core.getAttribute(acq_node, 'name');
+                                analyticsModel.dataAnalyticsModel.analyticsEngine[j] = analyticsEngine;
+                                self.logger.info(analyticsEngine);
+
+                                var platformversion = self.core.getAttribute(acq_node, 'platformversion');
+                                analyticsModel.dataAnalyticsModel.platformVersion = platformversion;
+                                self.logger.info(platformversion);
+
+                            }
+                            var acq_path = self.core.getChildrenPaths(dstNode);
+                            for (j = 0; j < acq_path.length; j += 1) {
+                                acq_node = self.pathToNode[acq_path[j]];
+                                var os_name = self.core.getAttribute(acq_node, 'name');
+                                analyticsModel.dataAnalyticsModel.OS.name = os_name;
+                                self.logger.info(os_name);
+                                var os_version = self.core.getAttribute(acq_node, 'version');
+                                analyticsModel.dataAnalyticsModel.OS.version = os_version;
+                                self.logger.info(os_version);
+                            }
+
+
+                            self.logger.error(" Calling analyticsAnsible..");
+                            self.logger.error(jupyterdependendency);
+                            //analyticsAnsible.analyticsgenerateAnsible(JSON.stringify(analyticsModel, null, 4));
+                            if (jupyterdependendency === true) {
+                                self.logger.error(" Calling Jupyter..");
+
+                                //sleep.sleep(5);
+                                analyticsAnsible.analyticsgenerateAnsible(JSON.stringify(analyticsModel, null, 4));
+                                jupyterdependendency = false;
+                            }
+                            else {
+
+                                analyticsModel.dataAnalyticsModel.jupyter = false;
+                                analyticsAnsible.analyticsgenerateAnsible(JSON.stringify(analyticsModel, null, 4));
+                            }
+
+                        }
+
                         // Log the name of the child (it's an attribute so we use getAttribute).
                         // childName = self.core.getAttribute(childNode, 'name');
                         // self.logger.info('At childNode', childName);
                     }
                 }
 
-                return webModel;
+                //return webModel;
             })
             .nodeify(callback);
     };
