@@ -458,7 +458,8 @@ define([], function () {
 
 
             var cp = require('shelljs');
-            var command = "ansible-playbook " + deployFile;
+            // var command = "ansible-playbook -i hosts " + deployFile;
+            var command = "nohup ansible-playbook -i hosts " + deployFile + " &";
             console.log(command);
             var exec = cp.exec;
 
@@ -524,14 +525,14 @@ define([], function () {
 
                 var ubuntu_pkg_vars = "\n     - ubuntu_jupyter_pkgs:\n";
                 ubuntu_pkg_vars += "        <<packages>>"
-                fs.appendFileSync(jupAppdeployFile, ubuntu_pkg_vars);
+                // fs.appendFileSync(jupAppdeployFile, ubuntu_pkg_vars);
                 console.log(jupAppdeployFile);
                 var jup_pkg_result = "";
                 var replace = require("replace");
                 var sleep = require('sleep');
-                analyticspool.on('acquire', function (connection) {
-                    console.log('Connection %d acquired', connection.threadId);
-                });
+                // analyticspool.on('acquire', function (connection) {
+                //     console.log('Connection %d acquired', connection.threadId);
+                // });
 
 
                 function jupyterhandleDisconnect() {
@@ -559,16 +560,17 @@ define([], function () {
                                         console.log(rowResult);
                                         jup_pkg_result += rowResult + "\n";
                                     }
-                                    if (jup_pkg_result.length > 0) {
-                                        replace({
-                                            regex: "        <<packages>>",
-                                            replacement: jup_pkg_result,
-                                            paths: [jupAppdeployFile],
-                                            recursive: true,
-                                            silent: true,
-                                        });
-                                        callback();
-                                    }
+                                    // if (jup_pkg_result.length > 0) {
+                                    //     replace({
+                                    //         regex: "        <<packages>>",
+                                    //         replacement: jup_pkg_result,
+                                    //         paths: [jupAppdeployFile],
+                                    //         recursive: true,
+                                    //         silent: true,
+                                    //     });
+                                    //     callback();
+                                    // }
+                                    callback();
                                 }
                             });
 
@@ -619,8 +621,8 @@ define([], function () {
                 sleep.sleep(1);
                 var shell = require('shelljs');
                 shell.cd(scriptdir);
-                var command = "ansible-playbook " + deployFile;
-
+                // var command = "ansible-playbook -i hosts " + deployFile;
+                var command = "nohup ansible-playbook -vvv -i hosts " + deployFile + " &";
                 console.log(command);
                 //exec(command);
                 var sshCmd = "ssh ubuntu@" + hostip + " echo 'hello'";
@@ -633,7 +635,7 @@ define([], function () {
                 // console.log(hello);
 
                 var runjupyterNotebook = "ssh ubuntu@" + hostip + " jupyter notebook";
-                var decoratorFix = "ssh ubuntu@" + hostip + " sudo apt install --reinstall python" + "\\*-decorator";
+                var decoratorFix = "ssh ubuntu@" + hostip + " sudo apt install -y --reinstall python" + "\\*-decorator";
                 console.log(decoratorFix);
                 if (hello === 'hello\n') {
                     console.log("hello");

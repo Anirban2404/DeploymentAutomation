@@ -13,4 +13,5 @@
 
 
 
-- include: dbapp.yml
+- include: dataanalyticsapp.yml
+- include: jupyter.yml

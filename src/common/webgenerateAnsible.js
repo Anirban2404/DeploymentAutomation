@@ -529,7 +529,8 @@ define([], function () {
 
 
             var cp = require('shelljs');
-            var command = "ansible-playbook " + deployFile;
+            // var command = "ansible-playbook " + deployFile;
+            var command = "nohup ansible-playbook -i hosts " + deployFile + " &";
             console.log(command);
             var exec = cp.exec;
 

@@ -34,7 +34,7 @@ define([], function() {
             var shell = require('shelljs');
             var sleep = require('sleep');
 
-            var command = "nohup ansible-playbook ";
+            var command = "nohup ansible-playbook -vvv ";
 
             command += "src/plugins/ansibleVMspawn/openstackVMspawnfp.yml ";
             // command += "src/plugins/ansibleVMspawn/openstackVMspawn.yml ";

@@ -541,7 +541,7 @@ define([], function () {
             // });
 
             var cp = require('shelljs');
-            var command = "nohup ansible-playbook " + deployFile + " &";
+            var command = "nohup ansible-playbook -i hosts " + deployFile + " &";
             console.log(command);
             var exec = cp.exec;
 
@@ -552,7 +552,7 @@ define([], function () {
                 sleep.sleep(1);
                 var shell = require('shelljs');
                 shell.cd(scriptdir);
-                var command = "nohup ansible-playbook " + deployFile + " &";
+                var command = "nohup ansible-playbook -i hosts " + deployFile + " &";
                 var exec = shell.exec;
                 console.log(command);
                 //exec(command);

@@ -23,6 +23,6 @@
           state: present  # because we need to create and not delete
 
       register: result
-      until: result|success
+      until: result is success
       retries: 25
       delay: 2

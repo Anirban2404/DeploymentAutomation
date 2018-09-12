@@ -1,0 +1,21 @@
+- hosts: appserver
+  become_user: root
+  become: true
+  become_method: sudo
+
+  vars:
+    - path: 
+
+      ubuntu_scikitlearn_pkgs:
+         - python-dev
+         - python-pip
+         - python-numpy
+         - python-scipy
+         - python-matplotlib
+         - python-pandas
+         - python-sympy
+         - python-nose
+
+
+  roles:
+    - DataAnalyticsApp

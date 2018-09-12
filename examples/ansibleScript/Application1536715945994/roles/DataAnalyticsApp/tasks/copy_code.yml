@@ -1,0 +1,26 @@
+---
+
+- name: Install Git
+  apt: name={{ item }} update_cache=yes state=latest
+  with_items:
+      - git
+
+- name: Delete directory
+  file: path=/home/ubuntu/dataAnalytics state=absent
+
+- name: Create directory
+  file: path=/home/ubuntu/dataAnalytics state=directory mode=0777
+  register: create
+
+- name: Git Clone Repo
+  git:
+    repo: "{{ path }}"
+    dest: /home/ubuntu/dataAnalytics
+  register: git_finished
+  when: create.changed
+  ignore_errors: yes
+
+- name: Make sure owned by ubuntu
+  file: path=/home/ubuntu owner=ubuntu group=ubuntu recurse=yes
+  when: git_finished.changed
+  ignore_errors: yes
