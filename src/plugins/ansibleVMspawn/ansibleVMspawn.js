@@ -391,9 +391,14 @@ define([
                                 var appName = self.core.getAttribute(srcNode, 'name');
                                 analyticsModel.dataAnalyticsModel.AppName = appName;
                                 self.logger.info(appName);
+
                                 var srcPath = self.core.getAttribute(srcNode, 'src');
                                 analyticsModel.dataAnalyticsModel.srcPath = srcPath;
                                 self.logger.info(srcPath);
+
+                                var replication_count = self.core.getAttribute(srcNode, 'replication_count');
+                                analyticsModel.dataAnalyticsModel.replication_count = replication_count;
+                                self.logger.info(replication_count);
 
                                 var acq_path = self.core.getChildrenPaths(srcNode);
                                 for (j = 0; j < acq_path.length; j += 1) {
@@ -475,7 +480,7 @@ define([
                                         console.log("========", hostTempfile, "===========");
                                         if (newSize > oldSize + 10) {
                                             // visited = true;
-
+                                            sleep.sleep(5);
                                             // var src_node = self.core.getAttribute(srcNode, 'name');
                                             // // self.logger.info('At srcNode', src_node);
 
@@ -528,9 +533,9 @@ define([
                                                 console.log(connectedNode, "%%%%%%%%", reader);
                                                 da_visited = true;
                                                 var host_ip = self.core.getAttribute(dstNode, 'host_ip');
-                                                // console.log(reader.trim());
+                                                console.log(reader.trim());
                                                 analyticsModel.dataAnalyticsModel.host_ip = reader;
-                                                // self.logger.info(host_ip);
+                                                self.logger.info(host_ip);
                                                 console.log("+++++++++++++++src/plugins/ansibleVMspawn/hostTemp" + vmName);
                                                 console.log(JSON.stringify(analyticsModel, null, 4));
                                                 sleep.sleep(1);

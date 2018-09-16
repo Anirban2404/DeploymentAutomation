@@ -2,9 +2,18 @@
 - name: Install Jupyter through pip
   become: true
   shell: |
-     sudo pip install jupyter notebook
+     sudo apt-get update & apt-get purge ipython -y
   args:
       executable: /bin/bash
+  register: ipython
+
+- name: Install Jupyter through pip
+  become: true
+  shell: |
+      sudo -H pip install jupyter
+  args:
+      executable: /bin/bash
+  when: ipython.changed
   register: jupyter
 
 - name: Install Jupyter and Generate jupyter config file
@@ -25,3 +34,10 @@
          c.NotebookApp.ip = '*'
          c.NotebookApp.port = 9999
   when: config.changed
+  register: jupyterset
+
+- name: Run jupyter
+  become: false
+  shell: |
+     nohup jupyter notebook &
+  when: jupyterset.changed

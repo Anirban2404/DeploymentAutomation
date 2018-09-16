@@ -622,7 +622,7 @@ define([], function () {
                 var shell = require('shelljs');
                 shell.cd(scriptdir);
                 // var command = "ansible-playbook -i hosts " + deployFile;
-                var command = "nohup ansible-playbook -vvv -i hosts " + deployFile + " &";
+                var command = "nohup ansible-playbook -i hosts " + deployFile + " &";
                 console.log(command);
                 //exec(command);
                 var sshCmd = "ssh ubuntu@" + hostip + " echo 'hello'";
